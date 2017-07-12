@@ -79,7 +79,7 @@ public class ConfigServlet extends HttpServlet
 
             final OFMeetConfig ofMeetConfig = new OFMeetConfig();
 
-			final boolean isSwitchAvailable = JiveGlobals.getBooleanProperty("freeswitch.enabled", false);
+            final boolean isSwitchAvailable = JiveGlobals.getBooleanProperty("freeswitch.enabled", false);
             final String xmppDomain = XMPPServer.getInstance().getServerInfo().getXMPPDomain();
             final String sipDomain = JiveGlobals.getProperty("freeswitch.sip.hostname", getIpAddress());
 
@@ -126,20 +126,20 @@ public class ConfigServlet extends HttpServlet
 
                 if (jsonObject.has( "d" ))
                 {
-                	iceServers = jsonObject.getString( "d" );
-				}
+                    iceServers = jsonObject.getString( "d" );
+                }
 
                 Log.debug( "OFMeetConfig. got xirsys iceSevers " + iceServers );
             }
 
             final JSONObject config = new JSONObject();
 
-			boolean securityEnabled = JiveGlobals.getBooleanProperty("ofmeet.security.enabled", false);
+            boolean securityEnabled = JiveGlobals.getBooleanProperty("ofmeet.security.enabled", false);
 
-			if (securityEnabled && request.getUserPrincipal() != null)
-			{
-				handleAuthenticatedUser(config, request, xmppDomain, conferences);
-			}
+            if (securityEnabled && request.getUserPrincipal() != null)
+            {
+                handleAuthenticatedUser(config, request, xmppDomain, conferences);
+            }
 
 
             final Map<String, String> hosts = new HashMap<>();
@@ -150,9 +150,9 @@ public class ConfigServlet extends HttpServlet
 
             if (isSwitchAvailable)
             {
-				hosts.put( "callcontrol", "callcontrol." + xmppDomain );
-				hosts.put( "sip", sipDomain );
-			}
+                hosts.put( "callcontrol", "callcontrol." + xmppDomain );
+                hosts.put( "sip", sipDomain );
+            }
 
             config.put( "hosts", hosts );
 
@@ -183,10 +183,10 @@ public class ConfigServlet extends HttpServlet
             config.put( "clientNode", "http://igniterealtime.org/ofmeet/jitsi-meet/" );
             config.put( "focusUserJid", XMPPServer.getInstance().createJID( "focus", null ).toBareJID() );
             config.put( "defaultSipNumber", defaultSipNumber );
-            config.put( "desktopSharing", desktopSharing );
-            config.put( "chromeExtensionId", chromeExtensionId );
-            config.put( "desktopSharingSources", new JSONArray( desktopShareSrcs ) );
-            config.put( "minChromeExtVersion", minChromeExtVer );
+            config.put( "desktopSharingChromeMethod", desktopSharing );
+            config.put( "desktopSharingChromeExtId", chromeExtensionId );
+            config.put( "desktopSharingChromeSources", new JSONArray( desktopShareSrcs ) );
+            config.put( "desktopSharingChromeMinExtVersion", minChromeExtVer );
             config.put( "minHDHeight", minHDHeight );
             config.put( "desktopSharingFirefoxExtId", "jidesha@meet.jit.si" );
             config.put( "desktopSharingFirefoxDisabled", false );
@@ -232,81 +232,81 @@ public class ConfigServlet extends HttpServlet
         }
     }
 
-	private void handleAuthenticatedUser(JSONObject config, HttpServletRequest request, String xmppDomain, JSONObject conferences)
-	{
-		String userName = request.getUserPrincipal().getName();
+    private void handleAuthenticatedUser(JSONObject config, HttpServletRequest request, String xmppDomain, JSONObject conferences)
+    {
+        String userName = request.getUserPrincipal().getName();
 
-		config.put( "id", userName + "@" + xmppDomain );
+        config.put( "id", userName + "@" + xmppDomain );
 
-		try {
-			User user = XMPPServer.getInstance().getUserManager().getUser(userName);
+        try {
+            User user = XMPPServer.getInstance().getUserManager().getUser(userName);
 
-			config.put( "emailAddress", user.getEmail() );
-			config.put( "nickName", user.getName() );
+            config.put( "emailAddress", user.getEmail() );
+            config.put( "nickName", user.getName() );
 
-		} catch (Exception e) {
-			Log.error( "OFMeetConfig doGet Error", e );
-		}
+        } catch (Exception e) {
+            Log.error( "OFMeetConfig doGet Error", e );
+        }
 
-		final String token = TokenManager.getInstance().retrieveToken(request.getUserPrincipal());
+        final String token = TokenManager.getInstance().retrieveToken(request.getUserPrincipal());
 
-		if (token != null)
-		{
-			config.put( "password", token );
-		}
+        if (token != null)
+        {
+            config.put( "password", token );
+        }
 
-		VCardManager vcardManager = VCardManager.getInstance();
-		Element vcard = vcardManager.getVCard(userName);
+        VCardManager vcardManager = VCardManager.getInstance();
+        Element vcard = vcardManager.getVCard(userName);
 
-		if (vcard != null)
-		{
-			Element photo = vcard.element("PHOTO");
+        if (vcard != null)
+        {
+            Element photo = vcard.element("PHOTO");
 
-			if (photo != null)
-			{
-				String type = photo.element("TYPE").getText();
-				String binval = photo.element("BINVAL").getText();
+            if (photo != null)
+            {
+                String type = photo.element("TYPE").getText();
+                String binval = photo.element("BINVAL").getText();
 
-				config.put( "userAvatar", "data:" + type + ";base64," + binval.replace("\n", "").replace("\r", "") );
-			}
-		}
+                config.put( "userAvatar", "data:" + type + ";base64," + binval.replace("\n", "").replace("\r", "") );
+            }
+        }
 
-		try {
-			final Collection<Bookmark> bookmarks = BookmarkManager.getBookmarks();
+        try {
+            final Collection<Bookmark> bookmarks = BookmarkManager.getBookmarks();
 
-			for (Bookmark bookmark : bookmarks)
-			{
-				boolean addBookmarkForUser = bookmark.isGlobalBookmark() || isBookmarkForJID(userName, bookmark);
+            for (Bookmark bookmark : bookmarks)
+            {
+                boolean addBookmarkForUser = bookmark.isGlobalBookmark() || isBookmarkForJID(userName, bookmark);
 
-				if (addBookmarkForUser)
-				{
-					if (bookmark.getType() == Bookmark.Type.group_chat)
-					{
-						String conferenceRoom = (new JID(bookmark.getValue())).getNode();
-						String autoJoin =  bookmark.getProperty("autojoin");
+                if (addBookmarkForUser)
+                {
+                    if (bookmark.getType() == Bookmark.Type.group_chat)
+                    {
+                        String conferenceRoom = (new JID(bookmark.getValue())).getNode();
+                        String autoJoin =  bookmark.getProperty("autojoin");
 
-						JSONObject conference = new JSONObject();
-						conference.put("name", bookmark.getName());
-						conference.put("jid", bookmark.getValue());
+                        JSONObject conference = new JSONObject();
+                        conference.put("name", bookmark.getName());
+                        conference.put("jid", bookmark.getValue());
 
-						if (autoJoin != null && "true".equals(autoJoin))
-						{
-							conference.put("audiobridgeNumber", conferenceRoom);
-						}
+                        if (autoJoin != null && "true".equals(autoJoin))
+                        {
+                            conference.put("audiobridgeNumber", conferenceRoom);
+                        }
 
-						conferences.put(conferenceRoom, conference);
-					}
-				}
-			}
+                        conferences.put(conferenceRoom, conference);
+                    }
+                }
+            }
 
-		} catch (Exception e) {
-			Log.error("Config servlet", e);
-		}
-	}
+        } catch (Exception e) {
+            Log.error("Config servlet", e);
+        }
+    }
 
     private boolean isBookmarkForJID(String username, Bookmark bookmark) {
 
-		if (username == null || username.equals("null")) return false;
+        if (username == null || username.equals("null")) return false;
 
         if (bookmark.getUsers().contains(username)) {
             return true;
@@ -350,19 +350,19 @@ public class ConfigServlet extends HttpServlet
         }
     }
 
-	public String getIpAddress()
-	{
-		String ourHostname = XMPPServer.getInstance().getServerInfo().getHostname();
-		String ourIpAddress = ourHostname;
+    public String getIpAddress()
+    {
+        String ourHostname = XMPPServer.getInstance().getServerInfo().getHostname();
+        String ourIpAddress = ourHostname;
 
-		try {
-			ourIpAddress = InetAddress.getByName(ourHostname).getHostAddress();
-		} catch (Exception e) {
+        try {
+            ourIpAddress = InetAddress.getByName(ourHostname).getHostAddress();
+        } catch (Exception e) {
 
-		}
+        }
 
-		return ourIpAddress;
-	}
+        return ourIpAddress;
+    }
 
     private String getHTML( String urlToRead )
     {

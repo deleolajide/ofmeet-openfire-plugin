@@ -44,7 +44,7 @@
                             <goal>wget</goal>
                         </goals>
                         <configuration>
-                            <url>https://download.jitsi.org/jitsi-meet/src/jitsi-meet-1.0.2088.tar.bz2</url>
+                            <url>https://download.jitsi.org/jitsi-meet/src/jitsi-meet-1.0.2100.tar.bz2</url>
                             <unpack>true</unpack>
                             <outputDirectory>classes</outputDirectory>
                             <!--<md5>f8465fce5bb74ab107169653e3b8d5b9</md5>-->
@@ -53,29 +53,29 @@
                 </executions>
             </plugin>
             
-		<plugin>
-			<artifactId>maven-resources-plugin</artifactId>
-			<version>2.7</version>
-			<executions>
-				<execution>
-					<id>override-web-files</id>
-					<phase>prepare-package</phase>
-					<goals>
-						<goal>copy-resources</goal>
-					</goals>
+        <plugin>
+            <artifactId>maven-resources-plugin</artifactId>
+            <version>2.7</version>
+            <executions>
+                <execution>
+                    <id>override-web-files</id>
+                    <phase>prepare-package</phase>
+                    <goals>
+                        <goal>copy-resources</goal>
+                    </goals>
 
-					<configuration>
-						<overwrite>true</overwrite>					
-						<outputDirectory>classes/jitsi-meet</outputDirectory>
-						<resources>
-							<resource>
-								<directory>src/jitsi-meet</directory>
-							</resource>
-						</resources>
-					</configuration>
-				</execution>
-		   </executions>
-		</plugin>            
+                    <configuration>
+                        <overwrite>true</overwrite>                 
+                        <outputDirectory>classes/jitsi-meet</outputDirectory>
+                        <resources>
+                            <resource>
+                                <directory>src/jitsi-meet</directory>
+                            </resource>
+                        </resources>
+                    </configuration>
+                </execution>
+           </executions>
+        </plugin>            
             
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -165,27 +165,27 @@
             <artifactId>xmppserver</artifactId>
             <scope>provided</scope>
         </dependency>
-	<dependency>
-	    <groupId>commons-beanutils</groupId>
-	    <artifactId>commons-beanutils</artifactId>
-	    <version>1.9.3</version>
-	</dependency> 
-	<dependency>
-	    <groupId>net.sf.ezmorph</groupId>
-	    <artifactId>ezmorph</artifactId>
-	    <version>1.0.6</version>
-	</dependency>
-	<dependency>
-		<groupId>net.sf.json-lib</groupId>
-		<artifactId>json-lib</artifactId>
-		<version>2.4</version>
-		<classifier>jdk15</classifier>
-	</dependency>
-	<dependency>
-	    <groupId>org.jboss.netty</groupId>
-	    <artifactId>netty</artifactId>
-	    <version>3.2.1.Final</version>
-	</dependency>	
+    <dependency>
+        <groupId>commons-beanutils</groupId>
+        <artifactId>commons-beanutils</artifactId>
+        <version>1.9.3</version>
+    </dependency> 
+    <dependency>
+        <groupId>net.sf.ezmorph</groupId>
+        <artifactId>ezmorph</artifactId>
+        <version>1.0.6</version>
+    </dependency>
+    <dependency>
+        <groupId>net.sf.json-lib</groupId>
+        <artifactId>json-lib</artifactId>
+        <version>2.4</version>
+        <classifier>jdk15</classifier>
+    </dependency>
+    <dependency>
+        <groupId>org.jboss.netty</groupId>
+        <artifactId>netty</artifactId>
+        <version>3.2.1.Final</version>
+    </dependency>   
     </dependencies>
 
 </project>
