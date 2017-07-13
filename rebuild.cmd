@@ -12,5 +12,6 @@ copy C:\Projects\ignite\ofmeet-openfire-plugin-dele\ofmeet\target\ofmeet.jar "C:
 copy C:\Projects\ignite\ofmeet-openfire-plugin-dele\offocus\target\offocus.jar "C:\openfire_4_1_5\plugins"
 copy C:\Projects\ignite\ofmeet-openfire-plugin-dele\ofswitch\target\ofswitch.jar "C:\openfire_4_1_5\plugins"
 
+rd /s /q C:\Projects\ignite\ofmeet-openfire-plugin-dele\ofswitch\classes\jitsi-meet
 del "C:\openfire_4_1_5\logs\*.*"
 pause

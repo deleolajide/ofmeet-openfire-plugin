@@ -4,434 +4,434 @@
  
 var ofmeet = (function(of)
 {
-	var firstTime = true;
-	var firstTrack = true;
-	var participants = {}
+    var firstTime = true;
+    var firstTrack = true;
+    var participants = {}
 
-	Strophe.addConnectionPlugin('ofmeet', 
-	{
-		init: function (connection) 
-		{
-			console.log("ofmeet plugin: enabled", connection.jid);
-			
-			Strophe.SASLOFMeet = function () {
-			};
-			Strophe.SASLOFMeet.prototype = new Strophe.SASLMechanism("OFMEET", true, 2000);
-			Strophe.SASLOFMeet.test = function (connection) {
-				return config.password !== null;
-			};
-			Strophe.SASLOFMeet.prototype.onChallenge = function (connection) {
-				return config.password;
-			};
+    Strophe.addConnectionPlugin('ofmeet', 
+    {
+        init: function (connection) 
+        {
+            console.log("ofmeet plugin: enabled", connection.jid);
+            
+            Strophe.SASLOFMeet = function () {
+            };
+            Strophe.SASLOFMeet.prototype = new Strophe.SASLMechanism("OFMEET", true, 2000);
+            Strophe.SASLOFMeet.test = function (connection) {
+                return config.password !== null;
+            };
+            Strophe.SASLOFMeet.prototype.onChallenge = function (connection) {
+                return config.password;
+            };
 
-			// Register the new SASL mechanism.
-			connection.mechanisms[Strophe.SASLOFMeet.prototype.name] = Strophe.SASLOFMeet;
-		
-			this.connection = connection;
-			of.connection = connection;	
+            // Register the new SASL mechanism.
+            connection.mechanisms[Strophe.SASLOFMeet.prototype.name] = Strophe.SASLOFMeet;
+        
+            this.connection = connection;
+            of.connection = connection; 
 
-			of.connection.addHandler(function(message)
-			{
-				console.log("ofmeet.js incoming xmpp", message);
-		
-				$(message).find('ofmeet').each(function ()  	
-				{
-					try {
-						var json = JSON.parse($(this).text());
+            of.connection.addHandler(function(message)
+            {
+                console.log("ofmeet.js incoming xmpp", message);
+        
+                $(message).find('ofmeet').each(function ()      
+                {
+                    try {
+                        var json = JSON.parse($(this).text());
 
-						if (json.event == "ofmeet.event.sip.join")
-						{
-							addSipParticipant(json);
-						}
-						else
+                        if (json.event == "ofmeet.event.sip.join")
+                        {
+                            addSipParticipant(json);
+                        }
+                        else
 
-						if (json.event == "ofmeet.event.sip.leave")
-						{
-							removeSipParticipant(json);
-						}						
-											
+                        if (json.event == "ofmeet.event.sip.leave")
+                        {
+                            removeSipParticipant(json);
+                        }                       
+                                            
 
-					} catch (e) {}
-				});
+                    } catch (e) {}
+                });
 
-				return true;
+                return true;
 
-			}, "jabber:x:ofmeet", 'message');			
-		},	
-		statusChanged: function(status, condition)
-		{
-			console.log("ofmeet plugin: statusChanged", this.connection.jid, status, condition);
+            }, "jabber:x:ofmeet", 'message');           
+        },  
+        statusChanged: function(status, condition)
+        {
+            console.log("ofmeet plugin: statusChanged", this.connection.jid, status, condition);
 
-			if (status == 5)
-			{
-				console.log("ofmeet plugin: XMPPConnection.connected");	
+            if (status == 5)
+            {
+                console.log("ofmeet plugin: XMPPConnection.connected"); 
 
-				if (firstTime)
-				{
-					setTimeout(function() {__init();}, 1000);
-					firstTime = false;
-				}
-			}
-			else 
+                if (firstTime)
+                {
+                    setTimeout(function() {__init();}, 1000);
+                    firstTime = false;
+                }
+            }
+            else 
 
-			if (status == 6)
-			{
-				console.log("ofmeet plugin: XMPPConnection.disconnected");				
-			}	
-		}
-	});
+            if (status == 6)
+            {
+                console.log("ofmeet plugin: XMPPConnection.disconnected");              
+            }   
+        }
+    });
 
-	function __init()
-	{
-		console.log("ofmeet.js __init");
+    function __init()
+    {
+        console.log("ofmeet.js __init");
 
-		APP.conference.addConferenceListener(JitsiMeetJS.events.conference.CONFERENCE_JOINED, function()
-		{
-			console.log("ofmeet.js me joined");			
-		});
+        APP.conference.addConferenceListener(JitsiMeetJS.events.conference.CONFERENCE_JOINED, function()
+        {
+            console.log("ofmeet.js me joined");         
+        });
 
-		APP.conference.addConferenceListener(JitsiMeetJS.events.conference.CONFERENCE_LEFT, function()
-		{
-			console.log("ofmeet.js me left");
-			hangup();
-		});	
-		
-		APP.conference.addConferenceListener(JitsiMeetJS.events.conference.USER_LEFT, function(id)
-		{
-			console.log("ofmeet.js user left", id);	
-		});
+        APP.conference.addConferenceListener(JitsiMeetJS.events.conference.CONFERENCE_LEFT, function()
+        {
+            console.log("ofmeet.js me left");
+            hangup();
+        }); 
+        
+        APP.conference.addConferenceListener(JitsiMeetJS.events.conference.USER_LEFT, function(id)
+        {
+            console.log("ofmeet.js user left", id); 
+        });
 
-		APP.conference.addConferenceListener(JitsiMeetJS.events.conference.USER_JOINED, function(id)
-		{
-			console.log("ofmeet.js user joined", id);	
-		});		
+        APP.conference.addConferenceListener(JitsiMeetJS.events.conference.USER_JOINED, function(id)
+        {
+            console.log("ofmeet.js user joined", id);   
+        });     
 
-		APP.conference.addConferenceListener(JitsiMeetJS.events.conference.DOMINANT_SPEAKER_CHANGED, function(id)
-		{
-			console.log("ofmeet.js dominant speaker changed", id);	
-		});
+        APP.conference.addConferenceListener(JitsiMeetJS.events.conference.DOMINANT_SPEAKER_CHANGED, function(id)
+        {
+            console.log("ofmeet.js dominant speaker changed", id);  
+        });
 
-		APP.conference.addConferenceListener(JitsiMeetJS.events.conference.TRACK_REMOVED, function(track)
-		{
-			console.log("ofmeet.js track removed", track.getParticipantId(), track.getType());	
-		});
+        APP.conference.addConferenceListener(JitsiMeetJS.events.conference.TRACK_REMOVED, function(track)
+        {
+            console.log("ofmeet.js track removed", track.getParticipantId(), track.getType());  
+        });
 
-		APP.conference.addConferenceListener(JitsiMeetJS.events.conference.TRACK_ADDED, function(track)
-		{
-			console.log("ofmeet.js track added", track.getParticipantId(), track.getType());
-		});
-		
-		APP.conference.addConferenceListener(JitsiMeetJS.events.conference.TRACK_MUTE_CHANGED, function(track)
-		{
-			console.log("ofmeet.js track muted", track.getParticipantId(), track.getType(), track.isMuted());
-			
-			if (APP.conference.getMyUserId() == track.getParticipantId() && of.localStream)
-			{
-				var tracks = of.localStream.getAudioTracks();
-				
-				for (var i=0; i<tracks.length; i++)
-				{
-					tracks[i].enabled = !track.isMuted();
-				}				
-			}
-		});
-		
-		if (APP.conference.roomName && config.conferences[APP.conference.roomName])
-		{
-			of.dialstring = APP.conference.roomName;
-						
-			if (config.conferences[APP.conference.roomName].audiobridgeNumber)
-			{
-				of.dialstring = config.conferences[APP.conference.roomName].audiobridgeNumber;
-				connectSIP();
-			}			
-		}
-	}
-	
-	function connectSIP()
-	{
-		console.log("ofmeet.js connectSIP", config);
-		
-		var getTurnServers = function()
-		{
-			var turnServers = null;
+        APP.conference.addConferenceListener(JitsiMeetJS.events.conference.TRACK_ADDED, function(track)
+        {
+            console.log("ofmeet.js track added", track.getParticipantId(), track.getType());
+        });
+        
+        APP.conference.addConferenceListener(JitsiMeetJS.events.conference.TRACK_MUTE_CHANGED, function(track)
+        {
+            console.log("ofmeet.js track muted", track.getParticipantId(), track.getType(), track.isMuted());
+            
+            if (APP.conference.getMyUserId() == track.getParticipantId() && of.localStream)
+            {
+                var tracks = of.localStream.getAudioTracks();
+                
+                for (var i=0; i<tracks.length; i++)
+                {
+                    tracks[i].enabled = !track.isMuted();
+                }               
+            }
+        });
+        
+        if (APP.conference.roomName && config.conferences[APP.conference.roomName])
+        {
+            of.dialstring = APP.conference.roomName;
+                        
+            if (config.conferences[APP.conference.roomName].audiobridgeNumber)
+            {
+                of.dialstring = config.conferences[APP.conference.roomName].audiobridgeNumber;
+                connectSIP();
+            }           
+        }
+    }
+    
+    function connectSIP()
+    {
+        console.log("ofmeet.js connectSIP", config);
+        
+        var getTurnServers = function()
+        {
+            var turnServers = null;
 
-			if (config.iceServers && config.iceServers.iceServers)
-			{
-				turnServers = [];			
-				
-				for (var i=0; i<config.iceServers.iceServers.length; i++)
-				{
-					if (config.iceServers.iceServers[i].url.indexOf("turn:") > -1 || config.iceServers.iceServers[i].url.indexOf("turns:") > -1)
-					{
-						turnServers.push({urls: config.iceServers.iceServers[i].url, username: config.iceServers.iceServers[i].username, password: config.iceServers.iceServers[i].credential})
-					}
-				}
-			}
+            if (config.iceServers && config.iceServers.iceServers)
+            {
+                turnServers = [];           
+                
+                for (var i=0; i<config.iceServers.iceServers.length; i++)
+                {
+                    if (config.iceServers.iceServers[i].url.indexOf("turn:") > -1 || config.iceServers.iceServers[i].url.indexOf("turns:") > -1)
+                    {
+                        turnServers.push({urls: config.iceServers.iceServers[i].url, username: config.iceServers.iceServers[i].username, password: config.iceServers.iceServers[i].credential})
+                    }
+                }
+            }
 
-			return turnServers;
-		}
+            return turnServers;
+        }
 
-		var getStunServers = function()
-		{
-			var stunServers = null;
+        var getStunServers = function()
+        {
+            var stunServers = null;
 
-			if (config.iceServers && config.iceServers.iceServers)
-			{
-				stunServers = [];			
-				
-				for (var i=0; i<config.iceServers.iceServers.length; i++)
-				{
-					if (config.iceServers.iceServers[i].url.indexOf("stun:") > -1 || config.iceServers.iceServers[i].url.indexOf("stuns:") > -1)
-					{
-						stunServers.push(config.iceServers.iceServers[i].url)
-					}
-				}
-			}		
+            if (config.iceServers && config.iceServers.iceServers)
+            {
+                stunServers = [];           
+                
+                for (var i=0; i<config.iceServers.iceServers.length; i++)
+                {
+                    if (config.iceServers.iceServers[i].url.indexOf("stun:") > -1 || config.iceServers.iceServers[i].url.indexOf("stuns:") > -1)
+                    {
+                        stunServers.push(config.iceServers.iceServers[i].url)
+                    }
+                }
+            }       
 
-			return stunServers;	
-		}
-		
-		var getUserMediaFailure = function(e) 
-		{
-		    window.console.error('getUserMedia failed:', e);
-		}
+            return stunServers; 
+        }
+        
+        var getUserMediaFailure = function(e) 
+        {
+            window.console.error('getUserMedia failed:', e);
+        }
 
-		var getUserMediaSuccess = function(stream) 
-		{
-		     of.localStream = stream;
-		     
-			of.sipUI = new SIP.UA(
-			{
-			    uri             : 'sip:default@' + config.hosts.sip,
-			    wsServers       : "wss://" + window.location.host + "/sip/proxy?url=ws://" + config.hosts.sip + ":5066",
-			    turnServers     : getTurnServers(),
-			    stunServers     : getStunServers(),			    
-			    registerExpires : 30,
-			    displayName	    : config.nickName,			    
-			    traceSip        : true,
-			    log             : {
-					level : 0,
-			    }		
-			});
-			
-			of.sipUI.on('connected', function(e) {
-				console.log("SIP Connected");
-			});
+        var getUserMediaSuccess = function(stream) 
+        {
+             of.localStream = stream;
+             
+            of.sipUI = new SIP.UA(
+            {
+                uri             : 'sip:default@' + config.hosts.sip,
+                wsServers       : "wss://" + window.location.host + "/sip/proxy?url=ws://" + config.hosts.sip + ":5066",
+                turnServers     : getTurnServers(),
+                stunServers     : getStunServers(),             
+                registerExpires : 30,
+                displayName     : config.nickName,              
+                traceSip        : true,
+                log             : {
+                    level : 0,
+                }       
+            });
+            
+            of.sipUI.on('connected', function(e) {
+                console.log("SIP Connected");
+            });
 
-			of.sipUI.on('disconnected', function(e) {
-				console.log("SIP Disconnected");
-			});
+            of.sipUI.on('disconnected', function(e) {
+                console.log("SIP Disconnected");
+            });
 
-			of.sipUI.on('registered', function(e) {
-				console.log("SIP Registered");
+            of.sipUI.on('registered', function(e) {
+                console.log("SIP Registered");
 
-				if (of.session == null)
-				{				
-					setTimeout(function() { dial(); }, 250);
-				}
-			});
+                if (of.session == null)
+                {               
+                    setTimeout(function() { dial(); }, 250);
+                }
+            });
 
-			of.sipUI.on('registrationFailed', function(e) {
-				console.log("Error: Registration Failed");
-				APP.UI.messageHandler.notify("SIP Error " + e, null, null, "");
-			});
+            of.sipUI.on('registrationFailed', function(e) {
+                console.log("Error: Registration Failed");
+                APP.UI.messageHandler.notify("SIP Error " + e, null, null, "");
+            });
 
-			of.sipUI.on('unregistered', function(e) {
-				console.log("Error: Unregistered");
-			});
+            of.sipUI.on('unregistered', function(e) {
+                console.log("Error: Unregistered");
+            });
 
-			of.sipUI.on('message', function(message) {
-				console.log("SIP Message", message.body);
-				
-				var data = {};
-				
-				if (message.body.substring(0, 1) == "{")
-				{
-					try {
-						data = JSON.parse(message.body);
+            of.sipUI.on('message', function(message) {
+                console.log("SIP Message", message.body);
+                
+                var data = {};
+                
+                if (message.body.substring(0, 1) == "{")
+                {
+                    try {
+                        data = JSON.parse(message.body);
 
-						console.log("JSON Object", data);						
-					
-					} catch (e) {
-						console.error(e);
-					}
-				}
-			});
+                        console.log("JSON Object", data);                       
+                    
+                    } catch (e) {
+                        console.error(e);
+                    }
+                }
+            });
 
-			of.sipUI.on('invite', function (incomingSession) {
+            of.sipUI.on('invite', function (incomingSession) {
 
-				var remoteSipAudio = new Audio();
-				
-				incomingSession.accept({
-				    media : {
-					stream      : of.localStream,
-					constraints : { audio : true, video : false },
-					render      : { remote : remoteSipAudio},
-				    }				    
-				});				
-			});		     
-		}		
-		
-		console.log("ofmeet.js. SIP", config.hosts.sip, config.iceServers);			
-		navigator.getUserMedia({ audio : true, video : false }, getUserMediaSuccess, getUserMediaFailure);									
-	}	
+                var remoteSipAudio = new Audio();
+                
+                incomingSession.accept({
+                    media : {
+                    stream      : of.localStream,
+                    constraints : { audio : true, video : false },
+                    render      : { remote : remoteSipAudio},
+                    }                   
+                });             
+            });          
+        }       
+        
+        console.log("ofmeet.js. SIP", config.hosts.sip, config.iceServers);         
+        navigator.getUserMedia({ audio : true, video : false }, getUserMediaSuccess, getUserMediaFailure);                                  
+    }   
 
-	function removeSipParticipant(event)
-	{
-		if (APP.conference.roomName == event.conference)
-		{
-			console.log("ofmeet.js. removeSipParticipant", event);	
-			APP.UI.removeUser(event.id, event.source);
+    function removeSipParticipant(event)
+    {
+        if (APP.conference.roomName == event.conference)
+        {
+            console.log("ofmeet.js. removeSipParticipant", event);  
+            APP.UI.removeUser(event.id, event.source);
 
-			delete participants[event.id];
-		}
-	}
-	
-	function addSipParticipant(event)
-	{		
-		if (participants[event.id]) return;
-		if (APP.conference.roomName != event.conference) return;
+            delete participants[event.id];
+        }
+    }
+    
+    function addSipParticipant(event)
+    {       
+        if (participants[event.id]) return;
+        if (APP.conference.roomName != event.conference) return;
 
-		console.log("ofmeet.js. addSipParticipant", event);	
-		
-		var participant = 
-		{
-			getStatus: function()
-			{
-				return ""
-			}, 
-			getRole: function()
-			{
-				return "none"
-			}, 
-			supportsDTMF: function()
-			{
-				return false
-			}, 
-			getConnectionStatus: function()
-			{
-				return true
-			},
-			getId: function()
-			{	
-				return event.id;
-			}, 
-			getDisplayName: function() 
-			{
-				return event.source;
-			}, 
-			getFeatures: function()
-			{
-				return new Promise(function(resolve, reject) 
-				{
-					resolve({has: function(a){return false}});
-				})
-			}
-		}						
-				
-		APP.UI.addUser(participant);		
-		APP.UI.setUserAvatarUrl(event.id, "images/avatar2.png");
-		
-		participants[event.id] = participant;
-	}
-	
-	function dial()
-	{
-		console.log("ofmeet.js. SIP", config.hosts.sip, config.iceServers);
-		
-		try {
-			var remoteSipAudio = new Audio();
-			of.session = of.sipUI.invite(of.dialstring, 
-			{
-			    media : {
-				stream      : of.localStream,
-				constraints : { audio : true, video : false },
-				render      : { remote : remoteSipAudio},
-			    },
-			    extraHeaders: [ 'X-ofmeet-userid: ' + APP.conference.getMyUserId(), 'X-ofmeet-room: ' + APP.conference.roomName ]
-			});
+        console.log("ofmeet.js. addSipParticipant", event); 
+        
+        var participant = 
+        {
+            getStatus: function()
+            {
+                return ""
+            }, 
+            getRole: function()
+            {
+                return "none"
+            }, 
+            supportsDTMF: function()
+            {
+                return false
+            }, 
+            getConnectionStatus: function()
+            {
+                return true
+            },
+            getId: function()
+            {   
+                return event.id;
+            }, 
+            getDisplayName: function() 
+            {
+                return event.source;
+            }, 
+            getFeatures: function()
+            {
+                return new Promise(function(resolve, reject) 
+                {
+                    resolve({has: function(a){return false}});
+                })
+            }
+        }                       
+                
+        APP.UI.addUser(participant);        
+        APP.UI.setUserAvatarUrl(event.id, "images/avatar2.png");
+        
+        participants[event.id] = participant;
+    }
+    
+    function dial()
+    {
+        console.log("ofmeet.js. SIP", config.hosts.sip, config.iceServers);
+        
+        try {
+            var remoteSipAudio = new Audio();
+            of.session = of.sipUI.invite(of.dialstring, 
+            {
+                media : {
+                stream      : of.localStream,
+                constraints : { audio : true, video : false },
+                render      : { remote : remoteSipAudio},
+                },
+                extraHeaders: [ 'X-ofmeet-userid: ' + APP.conference.getMyUserId(), 'X-ofmeet-room: ' + APP.conference.roomName ]
+            });
 
-			of.session.direction = 'outgoing';
-			of.session.sessionId  = getUniqueID();
-			
-			APP.UI.messageHandler.notify("SIP Dialed", null, null, "");			
+            of.session.direction = 'outgoing';
+            of.session.sessionId  = getUniqueID();
+            
+            APP.UI.messageHandler.notify("SIP Dialed", null, null, "");         
 
-		} catch(e) {
-			APP.UI.messageHandler.notify(e, null, null, "");
-			throw(e);
-		}	
-	}
-	
-	function hangup()
-	{
-		if (of.session)
-		{
-			if (of.session.startTime) {
-				of.session.bye();
+        } catch(e) {
+            APP.UI.messageHandler.notify(e, null, null, "");
+            throw(e);
+        }   
+    }
+    
+    function hangup()
+    {
+        if (of.session)
+        {
+            if (of.session.startTime) {
+                of.session.bye();
 
-			} else if (of.session.reject) {
-				of.session.reject();
+            } else if (of.session.reject) {
+                of.session.reject();
 
-			} else if (of.session.cancel) {
-				of.session.cancel();
-			}
+            } else if (of.session.cancel) {
+                of.session.cancel();
+            }
 
-			of.session = null;	
-		}
-	}
-	
-	function getUniqueID() 
-	{
-	    	return Math.random().toString(36).substr(2, 9);
-	}	
+            of.session = null;  
+        }
+    }
+    
+    function getUniqueID() 
+    {
+            return Math.random().toString(36).substr(2, 9);
+    }   
 
-	window.addEventListener("beforeunload", function(e)
-	{
-		console.log("ofmeet.js beforeunload");
-		
-		APP.conference._room.leave();
-		
-		hangup();
-		
-		if (of.sipUI)
-		{
-			of.sipUI.unregister();
-			of.sipUI.stop();
-		}
-		
-		if (of.connection)
-		{
-			of.connection.disconnect();
-		}		
+    window.addEventListener("beforeunload", function(e)
+    {
+        console.log("ofmeet.js beforeunload");
+        
+        APP.conference._room.leave();
+        
+        hangup();
+        
+        if (of.sipUI)
+        {
+            of.sipUI.unregister();
+            of.sipUI.stop();
+        }
+        
+        if (of.connection)
+        {
+            of.connection.disconnect();
+        }       
 
-		e.returnValue = 'Ok';
-	});
+        e.returnValue = 'Ok';
+    });
 
-	window.addEventListener("unload", function (e) 
-	{
-		console.log("ofmeet.js unload");
-	});
+    window.addEventListener("unload", function (e) 
+    {
+        console.log("ofmeet.js unload");
+    });
 
-	window.addEventListener("load", function() 
-	{
-		console.log("ofmeet.js load");	
+    window.addEventListener("load", function() 
+    {
+        console.log("ofmeet.js load");  
 
-		if (config.emailAddress) APP.conference.changeLocalEmail(config.emailAddress);
-		if (config.nickName) 	APP.conference.changeLocalDisplayName(config.nickName);   
-		if (config.userAvatar) 	APP.conference.changeLocalAvatarUrl(config.userAvatar); 
+        if (config.emailAddress) APP.conference.changeLocalEmail(config.emailAddress);
+        if (config.nickName)    APP.conference.changeLocalDisplayName(config.nickName);   
+        if (config.userAvatar)  APP.conference.changeLocalAvatarUrl(config.userAvatar); 
 
-	});
+    });
 
-	if (config.id) 			localStorage.setItem("xmpp_username_override", config.id);
-	if (config.password) 	localStorage.setItem("xmpp_password_override", config.password);	
+    if (config.id)          localStorage.setItem("xmpp_username_override", config.id);
+    if (config.password)    localStorage.setItem("xmpp_password_override", config.password);    
 
 
-	config.devices = ["audio", "video"];
-	config.dialInNumbersUrl = 'https://' + window.location.host + '/meet/phonenumberlist.json';
-	config.dialInConfCodeUrl = 'https://' + window.location.host + '/meet/conferencemapper.json';
-	config.dialOutCodesUrl = 'https://' + window.location.host + '/meet/countrycodes.json';
-	config.dialOutAuthUrl = 'https://' + window.location.host + '/meet/authorizephone.json';
+    config.devices = ["audio", "video"];
+    config.dialInNumbersUrl = 'https://' + window.location.host + '/meet/phonenumberlist.json';
+    config.dialInConfCodeUrl = 'https://' + window.location.host + '/meet/conferencemapper.json';
+    config.dialOutCodesUrl = 'https://' + window.location.host + '/meet/countrycodes.json';
+    config.dialOutAuthUrl = 'https://' + window.location.host + '/meet/authorizephone.json';
 
     config.p2p = {
         enabled: true,
@@ -441,21 +441,21 @@ var ofmeet = (function(of)
             { urls: "stun:stun2.l.google.com:19302" }
         ],
         preferH264: true
-    }			
+    }           
 
-	var urlParam = function urlParam(name)
-	{
-		var results = new RegExp('[\\?&]' + name + '=([^&#]*)').exec(window.location.href);
-		if (!results) { return undefined; }
-		return unescape(results[1] || undefined);
-	}; 
+    var urlParam = function urlParam(name)
+    {
+        var results = new RegExp('[\\?&]' + name + '=([^&#]*)').exec(window.location.href);
+        if (!results) { return undefined; }
+        return unescape(results[1] || undefined);
+    }; 
 
-	if (urlParam("noaudio")) config.devices = ['video'];   
-	if (urlParam("novideo")) config.devices = ['audio'];
-		
+    if (urlParam("noaudio")) config.devices = ['video'];   
+    if (urlParam("novideo")) config.devices = ['audio'];
+        
     return of;
-    	
-}(ofmeet || {}));	
+        
+}(ofmeet || {}));   
 
 /*
  * SIP version 0.7.8
