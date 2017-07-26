@@ -417,21 +417,19 @@ var ofmeet = (function(of)
     {
         console.log("ofmeet.js load");  
 
-        if (config.emailAddress) APP.conference.changeLocalEmail(config.emailAddress);
-        if (config.nickName)    APP.conference.changeLocalDisplayName(config.nickName);   
-        if (config.userAvatar)  APP.conference.changeLocalAvatarUrl(config.userAvatar); 
+        if (config.emailAddress)    APP.conference.changeLocalEmail(config.emailAddress);
+        if (config.nickName)        APP.conference.changeLocalDisplayName(config.nickName);   
+        if (config.userAvatar)      APP.conference.changeLocalAvatarUrl(config.userAvatar); 
 
     });
 
     if (config.id)          localStorage.setItem("xmpp_username_override", config.id);
     if (config.password)    localStorage.setItem("xmpp_password_override", config.password);    
 
-
-    config.devices = ["audio", "video"];
-    config.dialInNumbersUrl = 'https://' + window.location.host + '/meet/phonenumberlist.json';
-    config.dialInConfCodeUrl = 'https://' + window.location.host + '/meet/conferencemapper.json';
-    config.dialOutCodesUrl = 'https://' + window.location.host + '/meet/countrycodes.json';
-    config.dialOutAuthUrl = 'https://' + window.location.host + '/meet/authorizephone.json';
+    config.dialInNumbersUrl     = 'https://' + window.location.host + '/meet/phonenumberlist.json';
+    config.dialInConfCodeUrl    = 'https://' + window.location.host + '/meet/conferencemapper.json';
+    config.dialOutCodesUrl      = 'https://' + window.location.host + '/meet/countrycodes.json';
+    config.dialOutAuthUrl       = 'https://' + window.location.host + '/meet/authorizephone.json';
 
     config.p2p = {
         enabled: true,
@@ -450,8 +448,12 @@ var ofmeet = (function(of)
         return unescape(results[1] || undefined);
     }; 
 
-    if (urlParam("noaudio")) config.devices = ['video'];   
-    if (urlParam("novideo")) config.devices = ['audio'];
+    if (urlParam("audio_only")) config.startAudioOnly = true;   
+    if (urlParam("screen_share")) config.startScreenSharing = true;
+    
+    // Suspending video might cause problems with audio playback. Disabling until these are fixed. 
+    
+    config.disableSuspendVideo = true;
         
     return of;
         
