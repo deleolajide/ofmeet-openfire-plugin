@@ -440,16 +440,6 @@ var ofmeet = (function(of)
         ],
         preferH264: true
     }           
-
-    var urlParam = function urlParam(name)
-    {
-        var results = new RegExp('[\\?&]' + name + '=([^&#]*)').exec(window.location.href);
-        if (!results) { return undefined; }
-        return unescape(results[1] || undefined);
-    }; 
-
-    if (urlParam("audio_only")) config.startAudioOnly = true;   
-    if (urlParam("screen_share")) config.startScreenSharing = true;
     
     // Suspending video might cause problems with audio playback. Disabling until these are fixed. 
     

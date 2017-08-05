@@ -27,20 +27,20 @@
 <%
     boolean update = request.getParameter("update") != null;
 
-	final Cookie csrfCookie = CookieUtils.getCookie( request, "csrf" );
-	final String csrfParam = ParamUtils.getParameter( request, "csrf" );
+    final Cookie csrfCookie = CookieUtils.getCookie( request, "csrf" );
+    final String csrfParam = ParamUtils.getParameter( request, "csrf" );
 
-	// Get handle on the plugin
-	final OfMeetPlugin container = (OfMeetPlugin) XMPPServer.getInstance().getPluginManager().getPlugin("ofmeet");
+    // Get handle on the plugin
+    final OfMeetPlugin container = (OfMeetPlugin) XMPPServer.getInstance().getPluginManager().getPlugin("ofmeet");
 
-	final Map<String, String> errors = new HashMap<>();
+    final Map<String, String> errors = new HashMap<>();
 
     if ( update )
-	{
-		if ( csrfCookie == null || csrfParam == null || !csrfCookie.getValue().equals( csrfParam ) )
-		{
-			errors.put( "csrf", "CSRF Failure!" );
-		}
+    {
+        if ( csrfCookie == null || csrfParam == null || !csrfCookie.getValue().equals( csrfParam ) )
+        {
+            errors.put( "csrf", "CSRF Failure!" );
+        }
 
         final String applicationName = request.getParameter( "applicationName" );
         final String activeSpkrAvatarSize = request.getParameter( "activeSpkrAvatarSize" );
@@ -92,7 +92,8 @@
         final boolean showPoweredBy = ParamUtils.getBooleanParameter( request, "showPoweredBy" );
         final boolean randomRoomNames = ParamUtils.getBooleanParameter( request, "randomRoomNames" );
         final boolean lipSync = ParamUtils.getBooleanParameter( request, "lipSync" );
-        final boolean verticalFilmstrip = ParamUtils.getBooleanParameter( request, "verticalFilmstrip" );        
+        final boolean verticalFilmstrip = ParamUtils.getBooleanParameter( request, "verticalFilmstrip" ); 
+        final boolean filmstripOnly = ParamUtils.getBooleanParameter( request, "filmstripOnly" );        
         
 
         final boolean showWatermark = ParamUtils.getBooleanParameter( request, "showWatermark" );
@@ -147,7 +148,7 @@
         }
 
         if ( errors.isEmpty() )
-		{
+        {
             JiveGlobals.setProperty( "org.jitsi.videobridge.ofmeet.application.name", applicationName );
             JiveGlobals.setProperty( "org.jitsi.videobridge.ofmeet.active.speaker.avatarsize", activeSpkrAvatarSize );
             JiveGlobals.setProperty( "org.jitsi.videobridge.ofmeet.canvas.extra", canvasExtra );
@@ -167,60 +168,61 @@
             JiveGlobals.setProperty( "org.jitsi.videobridge.ofmeet.brand.show.watermark", Boolean.toString( brandShowWatermark ) );
 
             ofmeetConfig.setLipSync( lipSync );
-            ofmeetConfig.setVerticalFilmstrip( verticalFilmstrip );            
+            ofmeetConfig.setVerticalFilmstrip( verticalFilmstrip ); 
+            ofmeetConfig.setFilmstripOnly( filmstripOnly );            
             ofmeetConfig.setWatermarkLogoUrl( watermarkLogoUrl );
             ofmeetConfig.setBrandWatermarkLogoUrl( brandWatermarkLogoUrl );
 
             ofmeetConfig.setButtonsEnabled( Arrays.asList( buttonsEnabled ) );
             ofmeetConfig.setButtonsOnTop( Arrays.asList( buttonsOnTop ) );
 
-			container.populateJitsiSystemPropertiesWithJivePropertyValues();
+            container.populateJitsiSystemPropertiesWithJivePropertyValues();
 
             response.sendRedirect( "ofmeet-uisettings.jsp?settingsSaved=true" );
             return;
-		}
-	}
+        }
+    }
 
     final String csrf = StringUtils.randomString( 15 );
-	CookieUtils.setCookie( request, response, "csrf", csrf, -1 );
+    CookieUtils.setCookie( request, response, "csrf", csrf, -1 );
 
-	pageContext.setAttribute( "csrf", csrf );
-	pageContext.setAttribute( "errors", errors );
+    pageContext.setAttribute( "csrf", csrf );
+    pageContext.setAttribute( "errors", errors );
 %>
 <html>
 <head>
-	<title><fmt:message key="config.page.uisettings.title" /></title>
-	<meta name="pageID" content="ofmeet-uisettings"/>
+    <title><fmt:message key="config.page.uisettings.title" /></title>
+    <meta name="pageID" content="ofmeet-uisettings"/>
 </head>
 <body>
 
 <c:choose>
-	<c:when test="${not empty param.settingsSaved and empty errors}">
-		<admin:infoBox type="success"><fmt:message key="config.page.configuration.save.success" /></admin:infoBox>
-	</c:when>
-	<c:otherwise>
-		<c:forEach var="err" items="${errors}">
-			<admin:infobox type="error">
-				<c:choose>
-					<c:when test="${err.key eq 'csrf'}"><fmt:message key="global.csrf.failed"/></c:when>
-					<c:otherwise>
-						<c:if test="${not empty err.value}">
-							<c:out value="${err.value}"/>
-						</c:if>
-						(<c:out value="${err.key}"/>)
-					</c:otherwise>
-				</c:choose>
-			</admin:infobox>
-		</c:forEach>
-	</c:otherwise>
+    <c:when test="${not empty param.settingsSaved and empty errors}">
+        <admin:infoBox type="success"><fmt:message key="config.page.configuration.save.success" /></admin:infoBox>
+    </c:when>
+    <c:otherwise>
+        <c:forEach var="err" items="${errors}">
+            <admin:infobox type="error">
+                <c:choose>
+                    <c:when test="${err.key eq 'csrf'}"><fmt:message key="global.csrf.failed"/></c:when>
+                    <c:otherwise>
+                        <c:if test="${not empty err.value}">
+                            <c:out value="${err.value}"/>
+                        </c:if>
+                        (<c:out value="${err.key}"/>)
+                    </c:otherwise>
+                </c:choose>
+            </admin:infobox>
+        </c:forEach>
+    </c:otherwise>
 </c:choose>
 
 <p><fmt:message key="config.page.uisettings.introduction" /></p>
 
 <form action="ofmeet-uisettings.jsp" method="post">
 
-	<fmt:message key="config.page.configuration.ui.title" var="boxtitle"/>
-	<admin:contentBox title="${boxtitle}">
+    <fmt:message key="config.page.configuration.ui.title" var="boxtitle"/>
+    <admin:contentBox title="${boxtitle}">
         <table cellpadding="3" cellspacing="0" border="0" width="100%">
             <tr>
                 <td width="200"><fmt:message key="ofmeet.application.name"/>:</td>
@@ -281,9 +283,16 @@
                     <input type="checkbox" name="verticalFilmstrip" ${ofmeetConfig.verticalFilmstrip ? "checked" : ""}>
                     <fmt:message key="ofmeet.verticalFilmstrip.enabled" />
                 </td>
+                
+            <tr>
+                <td nowrap colspan="2">
+                    <input type="checkbox" name="filmstripOnly" ${ofmeetConfig.filmstripOnly ? "checked" : ""}>
+                    <fmt:message key="ofmeet.filmstripOnly.enabled" />
+                </td>
+            </tr>                
             </tr>            
-		</table>
-	</admin:contentBox>
+        </table>
+    </admin:contentBox>
 
     <fmt:message key="ofmeet.toolbar.title" var="boxtitleToolbar"/>
     <admin:contentBox title="${boxtitleToolbar}">
