@@ -390,6 +390,9 @@ var ofmeet = (function(of)
     {
         console.log("ofmeet.js beforeunload");
         
+        localStorage.removeItem("xmpp_username_override");
+        localStorage.removeItem("xmpp_password_override");           
+        
         APP.conference._room.leave();
         
         hangup();
@@ -411,6 +414,9 @@ var ofmeet = (function(of)
     window.addEventListener("unload", function (e) 
     {
         console.log("ofmeet.js unload");
+        
+        localStorage.removeItem("xmpp_username_override");
+        localStorage.removeItem("xmpp_password_override");         
     });
 
     window.addEventListener("load", function() 
