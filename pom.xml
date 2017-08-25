@@ -38,6 +38,7 @@
         <module>ofmeet</module>
         <module>offocus</module>        
         <module>ofswitch</module>        
+        <module>ofchat</module>           
     </modules>
 
     <licenses>
@@ -134,6 +135,12 @@
             <dependency>
                 <groupId>${project.groupId}</groupId>
                 <artifactId>ofswitch</artifactId>
+                <version>${project.version}</version>
+            </dependency>  
+            
+            <dependency>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>ofchat</artifactId>
                 <version>${project.version}</version>
             </dependency>            
 
