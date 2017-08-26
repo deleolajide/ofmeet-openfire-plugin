@@ -10,7 +10,7 @@
         "version":"0.0.2",
         "title":"Chat API for Openfire"
     },
-    "host":"<%= JiveGlobals.getProperty("freeswitch.sip.hostname", XMPPServer.getInstance().getServerInfo().getHostname()) + ":" + JiveGlobals.getProperty("httpbind.port.secure", "7443") %>",
+    "host":"<%= JiveGlobals.getProperty("network.interface", XMPPServer.getInstance().getServerInfo().getHostname()) + ":" + JiveGlobals.getProperty("httpbind.port.secure", "7443") %>",
     "basePath":"/rest/api",
     "tags": [
     {
@@ -3036,6 +3036,33 @@
                 }
             }
         }, 
+        "/restapi/v1/meet/webpush":{
+            "get":{
+                "tags": [
+                    "Meet"
+                ], 
+                "summary": "Get all users with web push subscriptions",
+                "description": "",             
+                "consumes":[
+                ],
+                "produces":[
+                    "application/json",
+                    "application/xml"
+                ],
+                "parameters":[
+                ],
+                "responses":{
+                    "200":{
+                        "description":"OK",
+                        "headers":{
+                        },
+                        "schema":{
+                            "$ref":"#/definitions/UserEntities"
+                        }
+                    }
+                }
+            }
+        },         
         "/restapi/v1/meet/webpush/{username}":{
             "get":{
                 "tags": [

@@ -18,6 +18,8 @@ import org.jivesoftware.util.JiveGlobals;
 import com.sun.jersey.api.core.PackagesResourceConfig;
 import com.sun.jersey.spi.container.servlet.ServletContainer;
 
+import org.ifsoft.meet.MeetService;
+
 /**
  * The Class JerseyWrapper.
  */
@@ -97,6 +99,7 @@ public class JerseyWrapper extends ServletContainer {
         prc.getClasses().add(MessageService.class);
         prc.getClasses().add(SipService.class);
         prc.getClasses().add(BookmarkService.class);
+        prc.getClasses().add(MeetService.class);
 
         prc.getClasses().add(RESTExceptionMapper.class);
     }
