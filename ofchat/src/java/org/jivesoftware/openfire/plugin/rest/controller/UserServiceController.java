@@ -1,8 +1,9 @@
 package org.jivesoftware.openfire.plugin.rest.controller;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
+import java.util.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 
 import javax.ws.rs.core.Response;
 
@@ -32,6 +33,7 @@ import org.jivesoftware.openfire.user.User;
 import org.jivesoftware.openfire.user.UserAlreadyExistsException;
 import org.jivesoftware.openfire.user.UserManager;
 import org.jivesoftware.openfire.user.UserNotFoundException;
+import org.jivesoftware.database.DbConnectionManager;
 import org.xmpp.packet.JID;
 import org.xmpp.packet.StreamError;
 
@@ -50,7 +52,7 @@ public class UserServiceController {
 
 	/** The server. */
 	private XMPPServer server;
-	
+
 	/** The lock out manager. */
 	private LockOutManager lockOutManager;
 
@@ -174,6 +176,114 @@ public class UserServiceController {
 	}
 
 	/**
+	 * Gets the user entities by advanved search
+	 *
+	 * @param userSearch
+	 *            the user search
+	 * @param propertyValue
+	 * @param propertyKey
+	 * @return the user entities
+	 * @throws ServiceException
+	 */
+	public UserEntities getUsersBySearch(String criteria) throws ServiceException
+	{
+		UserManager userManager = UserManager.getInstance();
+		Set<String> searchFields = userManager.getSearchFields();
+		Set<User> users = new HashSet<User>();
+
+		Collection<User> foundUsers = new ArrayList<User>();
+		List<UserEntity> userEntities = new ArrayList<UserEntity>();
+
+        for (String searchField : searchFields)
+        {
+			foundUsers.addAll(userManager.findUsers(new HashSet<String>(Arrays.asList(searchField)), criteria));
+        }
+
+        foundUsers.addAll(getUsersByProperty(criteria));
+
+		for (User user : foundUsers)
+		{
+			if (user != null) {
+				users.add(user);
+			}
+		}
+
+		for (User user : users)
+		{
+			userEntities.add(UserUtils.convertUserToUserEntity(user));
+		}
+		return  new UserEntities(userEntities);
+	}
+
+	/**
+	 * Gets the user objects by property key or value.
+	 *
+	 * @param propertyName
+	 *            the property name
+	 * @param propertyValue
+	 *            the property value (can be null)
+	 * @return the username by property
+	 */
+	public List<User> getUsersByProperty(String search) throws ServiceException
+	{
+		List<User> users = new ArrayList<User>();
+		Connection con = null;
+		PreparedStatement pstmt = null;
+		ResultSet rs = null;
+
+		try {
+			con = DbConnectionManager.getConnection();
+
+			pstmt = con.prepareStatement("SELECT username FROM ofUserProp WHERE name=?");
+			pstmt.setString(1, search);
+
+			rs = pstmt.executeQuery();
+
+			while (rs.next())
+			{
+				users.add(getUser(rs.getString(1)));
+			}
+
+			pstmt = con.prepareStatement("SELECT username FROM ofUserProp WHERE propValue=?");
+			pstmt.setString(1, search);
+
+			rs = pstmt.executeQuery();
+
+			while (rs.next())
+			{
+				users.add(getUser(rs.getString(1)));
+			}
+
+
+		} catch (Exception e) {
+			throw new ServiceException("Could not get user properties", search, e.toString(), Response.Status.BAD_REQUEST);
+
+		} finally {
+			DbConnectionManager.closeConnection(rs, pstmt, con);
+		}
+		return users;
+	}
+
+	/**
+	 * Returns the the requested user or <tt>null</tt> if there are any
+	 * problems that don't throw an error.
+	 *
+	 * @param username the username of the local user to retrieve.
+	 * @return the requested user.
+	 * @throws UserNotFoundException if the requested user
+	 *         does not exist in the local server.
+	 */
+	private User getUser(String username) throws UserNotFoundException
+	{
+		JID targetJID = server.createJID(username, null);
+		// Check that the sender is not requesting information of a remote server entity
+		if (targetJID.getNode() == null) {
+			// Sender is requesting presence information of an anonymous user
+			throw new UserNotFoundException("Username is null");
+		}
+		return userManager.getUser(targetJID.getNode());
+	}
+	/**
 	 * Gets the user entity.
 	 *
 	 * @param username
@@ -210,7 +320,7 @@ public class UserServiceController {
 	public void disableUser(String username) throws ServiceException {
 		getAndCheckUser(username);
 		lockOutManager.disableAccount(username, null, null);
-		
+
         if (lockOutManager.isAccountDisabled(username)) {
             final StreamError error = new StreamError(StreamError.Condition.not_authorized);
             for (ClientSession sess : SessionManager.getInstance().getSessions(username)) {
@@ -234,8 +344,7 @@ public class UserServiceController {
 
 		List<RosterItemEntity> rosterEntities = new ArrayList<RosterItemEntity>();
 		for (RosterItem rosterItem : roster.getRosterItems()) {
-			RosterItemEntity rosterItemEntity = new RosterItemEntity(rosterItem.getJid().toBareJID(),
-					rosterItem.getNickname(), rosterItem.getSubStatus().getValue());
+			RosterItemEntity rosterItemEntity = new RosterItemEntity(rosterItem.getJid().toBareJID(), rosterItem.getNickname(), rosterItem.getSubStatus().getValue());
 			rosterItemEntity.setGroups(rosterItem.getGroups());
 
 			rosterEntities.add(rosterItemEntity);
@@ -394,7 +503,7 @@ public class UserServiceController {
 			}
 		}
 	}
-	
+
 	/**
 	 * Adds the user to group.
 	 *
@@ -410,7 +519,7 @@ public class UserServiceController {
 			// Create this group
 			group = GroupController.getInstance().createGroup(new GroupEntity(groupName, ""));
 		}
-		
+
 		group.getMembers().add(server.createJID(username, null));
 	}
 
@@ -438,7 +547,7 @@ public class UserServiceController {
 			}
 		}
 	}
-	
+
 	/**
 	 * Delete user from group.
 	 *

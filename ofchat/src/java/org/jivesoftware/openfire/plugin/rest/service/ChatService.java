@@ -20,7 +20,6 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Context;
 
 import java.security.Principal;
-import org.jivesoftware.openfire.plugin.ofmeet.jetty.KnownUser;
 
 import javax.xml.bind.*;
 import org.codehaus.jackson.map.*;
@@ -36,7 +35,6 @@ import org.jivesoftware.openfire.plugin.rest.exceptions.ServiceException;
 import org.jivesoftware.openfire.plugin.rest.exceptions.ExceptionType;
 
 import org.jivesoftware.openfire.plugin.rest.BasicAuth;
-import org.jivesoftware.openfire.plugin.rest.SmackSession;
 
 import org.jivesoftware.openfire.plugin.rest.entity.RosterEntities;
 import org.jivesoftware.openfire.plugin.rest.entity.RosterItemEntity;
@@ -61,7 +59,6 @@ import org.slf4j.LoggerFactory;
 
 import org.xmpp.packet.*;
 import org.jivesoftware.openfire.archive.*;
-import org.jivesoftware.openfire.plugin.ofmeet.TokenManager;
 
 
 @Path("restapi/v1/chat")
@@ -94,13 +91,14 @@ public class ChatService {
         Log.debug("postXmppMessage \n" + xmpp);
 
         try {
+/*
             String endUser = getEndUser();
 
             if (!RestEventSourceServlet.sendXmppMessage(endUser, xmpp))
             {
                 throw new ServiceException("Exception", "send xmpp failed", ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
             }
-
+*/
         } catch (Exception e) {
             throw new ServiceException("Exception", e.getMessage(), ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
         }
@@ -124,13 +122,14 @@ public class ChatService {
         Log.debug("postPresence " + show + " " + status);
 
         try {
+/*
             String endUser = getEndUser();
 
             if (!RestEventSourceServlet.postPresence(endUser, show, status))
             {
                 throw new ServiceException("Exception", "send chat failed", ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
             }
-
+*/
         } catch (Exception e) {
             throw new ServiceException("Exception", e.getMessage(), ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
         }
@@ -151,6 +150,7 @@ public class ChatService {
         Log.debug("postMessage " + to + "\n" + body);
 
         try {
+/*
             String endUser = getEndUser();
 
             // sent to destination
@@ -162,7 +162,7 @@ public class ChatService {
             // echo back to sender
             RestEventSourceServlet.emitData(endUser, "{\"type\": \"chat\", \"to\":\"" + to + "\", \"from\":\"" + makeJid(endUser) + "\", \"body\": \"" + body + "\"}");
 
-
+*/
         } catch (Exception e) {
             throw new ServiceException("Exception", e.getMessage(), ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
         }
@@ -177,6 +177,7 @@ public class ChatService {
         Log.debug("postChatState " + to + "\n" + state);
 
         try {
+/*
             String endUser = getEndUser();
 
             // sent to destination
@@ -184,7 +185,7 @@ public class ChatService {
             {
                 throw new ServiceException("Exception", "send chat-state failed", ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
             }
-
+*/
         } catch (Exception e) {
             throw new ServiceException("Exception", e.getMessage(), ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
         }
@@ -330,7 +331,7 @@ public class ChatService {
     @Produces({MediaType.APPLICATION_XML, MediaType.APPLICATION_JSON})
     public RosterEntities getUserRoster() throws ServiceException
     {
-        RosterEntities roster = RestEventSourceServlet.getRoster(getEndUser());
+        RosterEntities roster = null; //RestEventSourceServlet.getRoster(getEndUser());
 
         if (roster == null)
         {
@@ -436,13 +437,14 @@ public class ChatService {
         Log.debug("joinRoom " + service + " " + roomName);
 
         try {
+/*
             String endUser = getEndUser();
 
             if (!RestEventSourceServlet.joinRoom(endUser, roomName + "@" + service + "." + server.getServerInfo().getXMPPDomain(), endUser))
             {
                 throw new ServiceException("Exception", "join room failed", ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
             }
-
+*/
         } catch (Exception e) {
             throw new ServiceException("Exception", e.getMessage(), ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
         }
@@ -457,13 +459,14 @@ public class ChatService {
         Log.debug("leaveRoom " + service + " " + roomName);
 
         try {
+/*
             String endUser = getEndUser();
 
             if (!RestEventSourceServlet.leaveRoom(endUser, roomName + "@" + service + "." + server.getServerInfo().getXMPPDomain()))
             {
                 throw new ServiceException("Exception", "leave room failed", ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
             }
-
+*/
         } catch (Exception e) {
             throw new ServiceException("Exception", e.getMessage(), ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
         }
@@ -476,13 +479,14 @@ public class ChatService {
     public Response postToRoom(@DefaultValue("conference") @QueryParam("service") String service, @PathParam("roomName") String roomName, String body) throws ServiceException
     {
         try {
+/*
             String endUser = getEndUser();
 
             if (!RestEventSourceServlet.sendRoomMessage(endUser, roomName + "@" + service + "." + server.getServerInfo().getXMPPDomain(), body))
             {
                 throw new ServiceException("Exception", "send message to room failed", ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
             }
-
+*/
         } catch (Exception e) {
             throw new ServiceException("Exception", e.getMessage(), ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
         }
@@ -495,13 +499,14 @@ public class ChatService {
     public Response inviteToRoom(@DefaultValue("conference") @QueryParam("service") String service, @PathParam("roomName") String roomName, @PathParam("invitedJid") String invitedJid, String reason) throws ServiceException
     {
         try {
+/*
             String endUser = getEndUser();
 
             if (!RestEventSourceServlet.inviteToRoom(endUser, roomName + "@" + service + "." + server.getServerInfo().getXMPPDomain(), invitedJid, reason))
             {
                 throw new ServiceException("Exception", "invite to room failed", ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
             }
-
+*/
         } catch (Exception e) {
             throw new ServiceException("Exception", e.getMessage(), ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
         }
@@ -524,7 +529,7 @@ public class ChatService {
         String jid = source + "@" + server.getServerInfo().getXMPPDomain();
         String service = "workgroup." + server.getServerInfo().getXMPPDomain();
 
-        WorkgroupEntities workgroups = RestEventSourceServlet.getWorkgroups(source, jid, service);
+        WorkgroupEntities workgroups = null; //RestEventSourceServlet.getWorkgroups(source, jid, service);
 
         if (workgroups == null)
         {
@@ -542,7 +547,7 @@ public class ChatService {
 
         if (workgroup.indexOf("@") == -1) workgroup = workgroup + "@workgroup." + server.getServerInfo().getXMPPDomain();
 
-        AssistQueues queues = RestEventSourceServlet.getQueues(endUser, workgroup);
+        AssistQueues queues = null; //RestEventSourceServlet.getQueues(endUser, workgroup);
 
         if (queues == null)
         {
@@ -556,6 +561,7 @@ public class ChatService {
     public Response joinWorkgroup(@PathParam("workgroup") String workgroup) throws ServiceException
     {
         try {
+/*
             String endUser = getEndUser();
 
             if (workgroup.indexOf("@") == -1) workgroup = workgroup + "@workgroup." + server.getServerInfo().getXMPPDomain();
@@ -564,7 +570,7 @@ public class ChatService {
             {
                 throw new ServiceException("Exception", "join workgroup failed", ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
             }
-
+*/
         } catch (Exception e) {
             throw new ServiceException("Exception", e.getMessage(), ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
         }
@@ -577,6 +583,7 @@ public class ChatService {
     public Response acceptOffer(@PathParam("workgroup") String workgroup, @PathParam("offerId") String offerId) throws ServiceException
     {
         try {
+/*
             String endUser = getEndUser();
 
             if (workgroup.indexOf("@") == -1) workgroup = workgroup + "@workgroup." + server.getServerInfo().getXMPPDomain();
@@ -585,7 +592,7 @@ public class ChatService {
             {
                 throw new ServiceException("Exception", "accept offer failed", ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
             }
-
+*/
         } catch (Exception e) {
             throw new ServiceException("Exception", e.getMessage(), ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
         }
@@ -598,6 +605,7 @@ public class ChatService {
     public Response rejectOffer(@PathParam("workgroup") String workgroup, @PathParam("offerId") String offerId) throws ServiceException
     {
         try {
+/*
             String endUser = getEndUser();
 
             if (workgroup.indexOf("@") == -1) workgroup = workgroup + "@workgroup." + server.getServerInfo().getXMPPDomain();
@@ -606,7 +614,7 @@ public class ChatService {
             {
                 throw new ServiceException("Exception", "reject offer failed", ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
             }
-
+*/
         } catch (Exception e) {
             throw new ServiceException("Exception", e.getMessage(), ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
         }
@@ -620,6 +628,7 @@ public class ChatService {
     public Response leaveWorkgroup(@PathParam("workgroup") String workgroup) throws ServiceException
     {
         try {
+/*
             String endUser = getEndUser();
 
             if (workgroup.indexOf("@") == -1) workgroup = workgroup + "@workgroup." + server.getServerInfo().getXMPPDomain();
@@ -628,7 +637,7 @@ public class ChatService {
             {
                 throw new ServiceException("Exception", "leave workgroup failed", ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
             }
-
+*/
         } catch (Exception e) {
             throw new ServiceException("Exception", e.getMessage(), ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
         }
@@ -641,6 +650,11 @@ public class ChatService {
     //  Utitlities
     //
     //-------------------------------------------------------
+
+    private String getEndUser()
+    {
+        return null;
+    }
 
     private JID makeJid(String participant1)
     {

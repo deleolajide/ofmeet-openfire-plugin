@@ -21,17 +21,19 @@ import java.io.*;
 import java.net.*;
 import javax.net.ssl.*;
 import javax.security.auth.callback.*;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.ServletException;
 import java.util.*;
 import java.util.concurrent.*;
 
 import java.security.cert.Certificate;
 
-import org.jivesoftware.smack.*;
 import org.jivesoftware.openfire.*;
-import org.jivesoftware.smack.packet.ExtensionElement;
-import org.jivesoftware.smack.packet.Nonza;
-import org.jivesoftware.smack.packet.Stanza;
-import org.jivesoftware.smack.packet.TopLevelStreamElement;
+
+import org.jivesoftware.smack.*;
+import org.jivesoftware.smack.packet.*;
+import org.jivesoftware.smack.filter.*;
+import org.jivesoftware.smack.provider.*;
 import org.jivesoftware.smack.util.StringUtils;
 
 import org.jxmpp.jid.EntityFullJid;
@@ -69,25 +71,50 @@ import org.eclipse.jetty.servlets.EventSourceServlet;
  * @see XMPPConnection
  * @author Guenther Niess
  */
-public class OpenfireConnection extends AbstractXMPPConnection {
+public class OpenfireConnection extends AbstractXMPPConnection implements PacketListener {
     private static Logger Log = LoggerFactory.getLogger( "OpenfireConnection" );
+    private static final ConcurrentHashMap<String, OpenfireConnection> connections = new ConcurrentHashMap<String, OpenfireConnection>();
+
     private boolean reconnect = false;
     private LocalClientSession session;
     private SmackConnection smackConnection;
     private ServletHolder sseHolder;
 
-    private EntityFullJid getUserJid() {
-        try {
-            return JidCreate.entityFullFrom(config.getUsername()
-                            + "@"
-                            + config.getXMPPServiceDomain()
-                            + "/"
-                            + (config.getResource() != null ? config.getResource() : "virtual"));
+
+    public static OpenfireConnection getConnection(String username, String password)
+    {
+        OpenfireConnection connection = connections.get(username);
+
+        if (connection == null)
+        {
+            OpenfireConfiguration config = OpenfireConfiguration.builder()
+              .setUsernameAndPassword(username, password)
+              .setXmppDomain("localhost")
+              .setHost("localhost")
+              .setPort(0)
+              .build();
+
+            connection = new OpenfireConnection(config);
+            connection.connect();
+            //connection.addConnectionListener(connection);
+            connection.addPacketListener(connection, new PacketTypeFilter(org.jivesoftware.smack.packet.Message.class));
+            connections.put(username, connection);
         }
-        catch (XmppStringprepException e) {
-            throw new IllegalStateException(e);
+
+        return connection;
+    }
+
+    public static void removeConnection(String username)
+    {
+        OpenfireConnection connection = connections.remove(username);
+
+        if (connection != null)
+        {
+            connection.removePacketListener(connection);
+            connection.disconnect(new org.jivesoftware.smack.packet.Presence(org.jivesoftware.smack.packet.Presence.Type.unavailable));
         }
     }
+
 
     public OpenfireConnection(ConnectionConfiguration configuration) {
         super(configuration);
@@ -329,13 +356,26 @@ public class OpenfireConnection extends AbstractXMPPConnection {
 
     }
 
+    private EntityFullJid getUserJid() {
+        try {
+            return JidCreate.entityFullFrom(config.getUsername()
+                            + "@"
+                            + config.getXMPPServiceDomain()
+                            + "/"
+                            + (config.getResource() != null ? config.getResource() : "virtual"));
+        }
+        catch (XmppStringprepException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
     public class ClientServlet extends EventSourceServlet
     {
-        private final Set<Emitter> emitters = new CopyOnWriteArraySet<>();
+        private ClientEventSource clientEventSource = null;
 
         public void broadcast(String event)
         {
-            for (Emitter emitter : emitters)
+            for (EventSource.Emitter emitter : clientEventSource.emitters)
             {
                 try
                 {
@@ -358,31 +398,29 @@ public class OpenfireConnection extends AbstractXMPPConnection {
         @Override
         public void destroy()
         {
-            this.emitters.clear();
+            if (clientEventSource != null) clientEventSource.emitters.clear();
             super.destroy();
         }
 
         @Override
         protected EventSource newEventSource(HttpServletRequest request)
         {
-            return new ClientEventSource();
+            clientEventSource = new ClientEventSource();
+            return clientEventSource;
         }
 
-        final class ClientEventSource implements EventSource {
-
-            private volatile Emitter emitter;
+        final class ClientEventSource implements EventSource
+        {
+            private Set<EventSource.Emitter> emitters = new CopyOnWriteArraySet<>();
+            private Emitter emitter;
             private volatile boolean closed = false;
+            private ClientServlet servlet;
 
             @Override
             public void onOpen(Emitter emitter) throws IOException
             {
+                this.emitter = emitter;
                 emitters.add(emitter);
-            }
-
-            @Override
-            public void onResume(Emitter emitter, String lastEventId) throws IOException
-            {
-                onOpen(emitter);
             }
 
             @Override
@@ -391,8 +429,34 @@ public class OpenfireConnection extends AbstractXMPPConnection {
                 emitters.remove(this.emitter);
 
             }
-
         }
 
+    }
+
+    public static class OpenfireConfiguration extends ConnectionConfiguration
+    {
+        protected OpenfireConfiguration(Builder builder) {
+            super(builder);
+        }
+
+        public static Builder builder() {
+            return new Builder();
+        }
+
+        public static final class Builder extends ConnectionConfiguration.Builder<Builder, OpenfireConfiguration> {
+
+            private Builder() {
+            }
+
+            @Override
+            public OpenfireConfiguration build() {
+                return new OpenfireConfiguration(this);
+            }
+
+            @Override
+            protected Builder getThis() {
+                return this;
+            }
+        }
     }
 }

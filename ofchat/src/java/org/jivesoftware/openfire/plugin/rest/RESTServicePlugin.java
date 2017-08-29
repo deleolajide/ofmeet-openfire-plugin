@@ -17,11 +17,7 @@
 package org.jivesoftware.openfire.plugin.rest;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import javax.ws.rs.core.Response;
 
@@ -43,8 +39,7 @@ import org.jivesoftware.openfire.plugin.rest.service.JerseyWrapper;
 import org.eclipse.jetty.apache.jsp.JettyJasperInitializer;
 import org.eclipse.jetty.plus.annotation.ContainerInitializer;
 import org.eclipse.jetty.server.handler.ContextHandlerCollection;
-import org.eclipse.jetty.servlet.ServletContextHandler;
-import org.eclipse.jetty.servlet.ServletHolder;
+import org.eclipse.jetty.servlet.*;
 import org.eclipse.jetty.webapp.WebAppContext;
 
 import org.eclipse.jetty.util.security.*;
@@ -443,7 +438,7 @@ public class RESTServicePlugin implements Plugin, PropertyEventListener {
         // Do nothing
     }
 
-    public void addServlet(ServletHolder holder)
+    public void addServlet(ServletHolder holder, String path)
     {
        context.addServlet(holder, path);
     }
@@ -456,12 +451,16 @@ public class RESTServicePlugin implements Plugin, PropertyEventListener {
 
        for( ServletHolder holder : handler.getServlets() )
        {
-          if(deleteHolder.isInstance(holder.getServlet()))
-          {
-              names.add(holder.getName());
-          }
-          else /* We keep it */
-          {
+           try {
+              if(deleteHolder.getName().equals(holder.getName()))
+              {
+                  names.add(holder.getName());
+              }
+              else /* We keep it */
+              {
+                  servlets.add(holder);
+              }
+          } catch (Exception e) {
               servlets.add(holder);
           }
        }
