@@ -442,4 +442,45 @@ public class RESTServicePlugin implements Plugin, PropertyEventListener {
     public void xmlPropertyDeleted(String property, Map<String, Object> params) {
         // Do nothing
     }
+
+    public void addServlet(ServletHolder holder)
+    {
+       context.addServlet(holder, path);
+    }
+
+    public void removeServlets(ServletHolder deleteHolder)
+    {
+       ServletHandler handler = context.getServletHandler();
+       List<ServletHolder> servlets = new ArrayList<ServletHolder>();
+       Set<String> names = new HashSet<String>();
+
+       for( ServletHolder holder : handler.getServlets() )
+       {
+          if(deleteHolder.isInstance(holder.getServlet()))
+          {
+              names.add(holder.getName());
+          }
+          else /* We keep it */
+          {
+              servlets.add(holder);
+          }
+       }
+
+       List<ServletMapping> mappings = new ArrayList<ServletMapping>();
+
+       for( ServletMapping mapping : handler.getServletMappings() )
+       {
+          /* Only keep the mappings that didn't point to one of the servlets we removed */
+
+          if(!names.contains(mapping.getServletName()))
+          {
+              mappings.add(mapping);
+          }
+       }
+
+       /* Set the new configuration for the mappings and the servlets */
+
+       handler.setServletMappings( mappings.toArray(new ServletMapping[0]) );
+       handler.setServlets( servlets.toArray(new ServletHolder[0]) );
+    }
 }

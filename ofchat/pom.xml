@@ -229,6 +229,13 @@
             <version>1.72</version>
         </dependency>
 
+        <!-- https://mvnrepository.com/artifact/org.igniterealtime.smack/smack-core -->
+        <dependency>
+            <groupId>org.igniterealtime.smack</groupId>
+            <artifactId>smack-core</artifactId>
+            <version>4.2.1</version>
+        </dependency>
+
    
     </dependencies>
 
