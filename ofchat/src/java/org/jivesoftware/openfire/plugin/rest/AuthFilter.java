@@ -30,7 +30,7 @@ public class AuthFilter implements ContainerRequestFilter {
     private HttpServletRequest httpRequest;
 
     /** The plugin. */
-    private RESTServicePlugin plugin = (RESTServicePlugin) XMPPServer.getInstance().getPluginManager().getPlugin("ofchat");
+    private RESTServicePlugin plugin = RESTServicePlugin.getInstance();
 
     /*
      * (non-Javadoc)

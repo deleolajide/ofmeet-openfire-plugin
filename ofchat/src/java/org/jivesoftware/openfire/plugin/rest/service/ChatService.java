@@ -34,7 +34,7 @@ import org.jivesoftware.openfire.plugin.rest.controller.MUCRoomController;
 import org.jivesoftware.openfire.plugin.rest.exceptions.ServiceException;
 import org.jivesoftware.openfire.plugin.rest.exceptions.ExceptionType;
 
-import org.jivesoftware.openfire.plugin.rest.BasicAuth;
+import org.jivesoftware.openfire.plugin.rest.*;
 
 import org.jivesoftware.openfire.plugin.rest.entity.RosterEntities;
 import org.jivesoftware.openfire.plugin.rest.entity.RosterItemEntity;
@@ -60,6 +60,8 @@ import org.slf4j.LoggerFactory;
 import org.xmpp.packet.*;
 import org.jivesoftware.openfire.archive.*;
 
+import org.jivesoftware.smack.OpenfireConnection;
+
 
 @Path("restapi/v1/chat")
 public class ChatService {
@@ -80,25 +82,76 @@ public class ChatService {
 
     //-------------------------------------------------------
     //
+    //  login/logoff
+    //
+    //-------------------------------------------------------
+
+    @POST
+    @Path("/{username}/login")
+    @Produces(MediaType.TEXT_PLAIN)
+    public String login(@PathParam("username") String username, String password) throws ServiceException
+    {
+        Log.debug("login " + username + "\n" + password);
+
+        try {
+            OpenfireConnection connection = OpenfireConnection.createConnection(username, password);
+
+            if (connection == null)
+            {
+                throw new ServiceException("Exception", "xmpp connection error", ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
+            }
+
+            return connection.getStreamId();
+
+        } catch (Exception e) {
+            throw new ServiceException("Exception", e.getMessage(), ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
+        }
+    }
+
+    @POST
+    @Path("/{streamid}/logoff")
+    public Response logoff(@PathParam("streamid") String streamid) throws ServiceException
+    {
+        Log.debug("logoff " + streamid);
+
+        try {
+            OpenfireConnection connection = OpenfireConnection.removeConnection(streamid);
+
+            if (connection == null)
+            {
+                throw new ServiceException("Exception", "xmpp connection not found", ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
+            }
+
+            return Response.status(Response.Status.OK).build();
+
+        } catch (Exception e) {
+            throw new ServiceException("Exception", e.getMessage(), ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
+        }
+    }
+
+
+    //-------------------------------------------------------
+    //
     //  POST xmpp messags
     //
     //-------------------------------------------------------
 
     @POST
-    @Path("/xmpp")
-    public Response postXmppMessage(String xmpp) throws ServiceException
+    @Path("/{streamid}/xmpp")
+    public Response postXmppMessage(@PathParam("streamid") String streamid, String xmpp) throws ServiceException
     {
-        Log.debug("postXmppMessage \n" + xmpp);
+        Log.debug("postXmppMessage " + streamid + "\n" + xmpp);
 
         try {
-/*
-            String endUser = getEndUser();
+            OpenfireConnection connection = OpenfireConnection.getConnection(streamid);
 
-            if (!RestEventSourceServlet.sendXmppMessage(endUser, xmpp))
+            if (connection == null)
             {
-                throw new ServiceException("Exception", "send xmpp failed", ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
+                throw new ServiceException("Exception", "xmpp connection not found", ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
             }
-*/
+
+            connection.sendPacket(xmpp);
+
         } catch (Exception e) {
             throw new ServiceException("Exception", e.getMessage(), ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
         }
@@ -116,20 +169,21 @@ public class ChatService {
     //-------------------------------------------------------
 
     @POST
-    @Path("/presence")
-    public Response postPresence(@QueryParam("show") String show, @QueryParam("status") String status) throws ServiceException
+    @Path("/{streamid}/presence")
+    public Response postPresence(@PathParam("streamid") String streamid, @QueryParam("show") String show, @QueryParam("status") String status) throws ServiceException
     {
         Log.debug("postPresence " + show + " " + status);
 
         try {
-/*
-            String endUser = getEndUser();
+            OpenfireConnection connection = OpenfireConnection.getConnection(streamid);
 
-            if (!RestEventSourceServlet.postPresence(endUser, show, status))
+            if (connection == null)
             {
-                throw new ServiceException("Exception", "send chat failed", ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
+                throw new ServiceException("Exception", "xmpp connection not found", ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
             }
-*/
+
+            connection.postPresence(show, status);
+
         } catch (Exception e) {
             throw new ServiceException("Exception", e.getMessage(), ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
         }
@@ -144,25 +198,21 @@ public class ChatService {
     //-------------------------------------------------------
 
     @POST
-    @Path("/messages/{to}")
-    public Response postMessage(@PathParam("to") String to, String body) throws ServiceException
+    @Path("/{streamid}/messages/{to}")
+    public Response postMessage(@PathParam("streamid") String streamid, @PathParam("to") String to, String body) throws ServiceException
     {
         Log.debug("postMessage " + to + "\n" + body);
 
         try {
-/*
-            String endUser = getEndUser();
+            OpenfireConnection connection = OpenfireConnection.getConnection(streamid);
 
-            // sent to destination
-            if (!RestEventSourceServlet.sendChatMessage(endUser, body, to))
+            if (connection == null)
             {
-                throw new ServiceException("Exception", "send chat failed", ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
+                throw new ServiceException("Exception", "xmpp connection not found", ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
             }
 
-            // echo back to sender
-            RestEventSourceServlet.emitData(endUser, "{\"type\": \"chat\", \"to\":\"" + to + "\", \"from\":\"" + makeJid(endUser) + "\", \"body\": \"" + body + "\"}");
+            connection.sendChatMessage(body, to);
 
-*/
         } catch (Exception e) {
             throw new ServiceException("Exception", e.getMessage(), ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
         }
@@ -171,21 +221,21 @@ public class ChatService {
     }
 
     @POST
-    @Path("/chatstate/{state}/{to}")
-    public Response postChatState(@PathParam("state") String state, @PathParam("to") String to) throws ServiceException
+    @Path("/{streamid}/chatstate/{state}/{to}")
+    public Response postChatState(@PathParam("streamid") String streamid, @PathParam("state") String state, @PathParam("to") String to) throws ServiceException
     {
         Log.debug("postChatState " + to + "\n" + state);
 
         try {
-/*
-            String endUser = getEndUser();
+            OpenfireConnection connection = OpenfireConnection.getConnection(streamid);
 
-            // sent to destination
-            if (!RestEventSourceServlet.setCurrentState(endUser, state, to))
+            if (connection == null)
             {
-                throw new ServiceException("Exception", "send chat-state failed", ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
+                throw new ServiceException("Exception", "xmpp connection not found", ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
             }
-*/
+
+            connection.setCurrentState(state, to);
+
         } catch (Exception e) {
             throw new ServiceException("Exception", e.getMessage(), ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
         }
@@ -194,17 +244,22 @@ public class ChatService {
     }
 
     @GET
-    @Path("/messages")
+    @Path("/{streamid}/messages")
     @Produces({MediaType.APPLICATION_XML, MediaType.APPLICATION_JSON})
-    public Conversations getConversations(@QueryParam("keywords") String keywords, @QueryParam("to") String to, @QueryParam("start") String start, @QueryParam("end") String end, @QueryParam("room") String room, @QueryParam("service") String service) throws ServiceException
+    public Conversations getConversations(@PathParam("streamid") String streamid, @QueryParam("keywords") String keywords, @QueryParam("to") String to, @QueryParam("start") String start, @QueryParam("end") String end, @QueryParam("room") String room, @QueryParam("service") String service) throws ServiceException
     {
-        Log.debug("getConversations " + keywords + " " + " " + to  + " " + start + " " + end + " " + room + " " + service);
+        Log.debug("getConversations " + streamid + " " + keywords + " " + " " + to  + " " + start + " " + end + " " + room + " " + service);
 
         try {
-            String endUser = getEndUser();
+            OpenfireConnection connection = OpenfireConnection.getConnection(streamid);
+
+            if (connection == null)
+            {
+                throw new ServiceException("Exception", "xmpp connection not found", ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
+            }
 
             ArchiveSearch search = new ArchiveSearch();
-            JID participant1JID = makeJid(endUser);
+            JID participant1JID = makeJid(connection.getUsername());
             JID participant2JID = null;
 
             if (to != null) participant2JID = makeJid(to);
@@ -289,12 +344,18 @@ public class ChatService {
     }
 
     @POST
-    @Path("/users/{propertyName}")
-    public Response setUserProperty(@PathParam("propertyName") String propertyName, String propertyValue) throws ServiceException
+    @Path("/{streamid}/users/{propertyName}")
+    public Response setUserProperty(@PathParam("streamid") String streamid, @PathParam("propertyName") String propertyName, String propertyValue) throws ServiceException
     {
         try {
-            String endUser = getEndUser();
-            User user = server.getUserManager().getUser(getEndUser());
+            OpenfireConnection connection = OpenfireConnection.getConnection(streamid);
+
+            if (connection == null)
+            {
+                throw new ServiceException("Exception", "xmpp connection not found", ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
+            }
+
+            User user = server.getUserManager().getUser(connection.getUsername());
             user.getProperties().put(propertyName, propertyValue);
 
         } catch (Exception e) {
@@ -305,12 +366,18 @@ public class ChatService {
     }
 
     @DELETE
-    @Path("/users/{propertyName}")
-    public Response deleteUserProperty(@PathParam("propertyName") String propertyName) throws ServiceException
+    @Path("/{streamid}/users/{propertyName}")
+    public Response deleteUserProperty(@PathParam("streamid") String streamid, @PathParam("propertyName") String propertyName) throws ServiceException
     {
         try {
-            String endUser = getEndUser();
-            User user = server.getUserManager().getUser(getEndUser());
+            OpenfireConnection connection = OpenfireConnection.getConnection(streamid);
+
+            if (connection == null)
+            {
+                throw new ServiceException("Exception", "xmpp connection not found", ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
+            }
+
+            User user = server.getUserManager().getUser(connection.getUsername());
             user.getProperties().remove(propertyName);
 
         } catch (Exception e) {
@@ -327,11 +394,11 @@ public class ChatService {
     //-------------------------------------------------------
 
     @GET
-    @Path("/contacts")
+    @Path("/{streamid}/contacts")
     @Produces({MediaType.APPLICATION_XML, MediaType.APPLICATION_JSON})
-    public RosterEntities getUserRoster() throws ServiceException
+    public RosterEntities getUserRoster(@PathParam("streamid") String streamid) throws ServiceException
     {
-        RosterEntities roster = null; //RestEventSourceServlet.getRoster(getEndUser());
+        RosterEntities roster = OpenfireConnection.getRosterEntities(streamid);
 
         if (roster == null)
         {
@@ -341,14 +408,20 @@ public class ChatService {
     }
 
     @POST
-    @Path("/contacts")
-    public Response createRoster(RosterItemEntity rosterItemEntity) throws ServiceException
+    @Path("/{streamid}/contacts")
+    public Response createRoster(@PathParam("streamid") String streamid, RosterItemEntity rosterItemEntity) throws ServiceException
     {
         Log.debug("createRoster");
 
         try {
-            String endUser = getEndUser();
-            userService.addRosterItem(endUser, rosterItemEntity);
+           OpenfireConnection connection = OpenfireConnection.getConnection(streamid);
+
+            if (connection == null)
+            {
+                throw new ServiceException("Exception", "xmpp connection not found", ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
+            }
+
+            userService.addRosterItem(connection.getUsername(), rosterItemEntity);
 
         } catch (Exception e) {
             Log.error("getConversations", e);
@@ -358,14 +431,19 @@ public class ChatService {
     }
 
     @PUT
-    @Path("/contacts/{rosterJid}")
-    public Response updateRoster(@PathParam("rosterJid") String rosterJid, RosterItemEntity rosterItemEntity) throws ServiceException
+    @Path("/{streamid}/contacts/{rosterJid}")
+    public Response updateRoster(@PathParam("streamid") String streamid, @PathParam("rosterJid") String rosterJid, RosterItemEntity rosterItemEntity) throws ServiceException
     {
         Log.debug("updateRoster " + rosterJid);
 
         try {
-            String endUser = getEndUser();
-            userService.updateRosterItem(endUser, rosterJid, rosterItemEntity);
+           OpenfireConnection connection = OpenfireConnection.getConnection(streamid);
+
+            if (connection == null)
+            {
+                throw new ServiceException("Exception", "xmpp connection not found", ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
+            }
+            userService.updateRosterItem(connection.getUsername(), rosterJid, rosterItemEntity);
 
         } catch (Exception e) {
             Log.error("getConversations", e);
@@ -375,14 +453,19 @@ public class ChatService {
     }
 
     @DELETE
-    @Path("/contacts/{rosterJid}")
-    public Response deleteRoster(@PathParam("rosterJid") String rosterJid) throws ServiceException
+    @Path("/{streamid}/contacts/{rosterJid}")
+    public Response deleteRoster(@PathParam("streamid") String streamid, @PathParam("rosterJid") String rosterJid) throws ServiceException
     {
         Log.debug("deleteRoster " + rosterJid);
 
         try {
-            String endUser = getEndUser();
-            userService.deleteRosterItem(endUser, rosterJid);
+           OpenfireConnection connection = OpenfireConnection.getConnection(streamid);
+
+            if (connection == null)
+            {
+                throw new ServiceException("Exception", "xmpp connection not found", ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
+            }
+            userService.deleteRosterItem(connection.getUsername(), rosterJid);
 
         } catch (Exception e) {
             Log.error("getConversations", e);
@@ -431,20 +514,24 @@ public class ChatService {
     }
 
     @PUT
-    @Path("/rooms/{roomName}")
-    public Response joinRoom(@DefaultValue("conference") @QueryParam("service") String service, @PathParam("roomName") String roomName) throws ServiceException
+    @Path("/{streamid}/rooms/{roomName}")
+    public Response joinRoom(@PathParam("streamid") String streamid, @DefaultValue("conference") @QueryParam("service") String service, @PathParam("roomName") String roomName) throws ServiceException
     {
         Log.debug("joinRoom " + service + " " + roomName);
 
         try {
-/*
-            String endUser = getEndUser();
+           OpenfireConnection connection = OpenfireConnection.getConnection(streamid);
 
-            if (!RestEventSourceServlet.joinRoom(endUser, roomName + "@" + service + "." + server.getServerInfo().getXMPPDomain(), endUser))
+            if (connection == null)
+            {
+                throw new ServiceException("Exception", "xmpp connection not found", ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
+            }
+
+            if (!connection.joinRoom(roomName + "@" + service + "." + server.getServerInfo().getXMPPDomain(), connection.getUsername()))
             {
                 throw new ServiceException("Exception", "join room failed", ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
             }
-*/
+
         } catch (Exception e) {
             throw new ServiceException("Exception", e.getMessage(), ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
         }
@@ -453,20 +540,24 @@ public class ChatService {
     }
 
     @DELETE
-    @Path("/rooms/{roomName}")
-    public Response leaveRoom(@DefaultValue("conference") @QueryParam("service") String service, @PathParam("roomName") String roomName) throws ServiceException
+    @Path("/{streamid}/rooms/{roomName}")
+    public Response leaveRoom(@PathParam("streamid") String streamid, @DefaultValue("conference") @QueryParam("service") String service, @PathParam("roomName") String roomName) throws ServiceException
     {
         Log.debug("leaveRoom " + service + " " + roomName);
 
         try {
-/*
-            String endUser = getEndUser();
+           OpenfireConnection connection = OpenfireConnection.getConnection(streamid);
 
-            if (!RestEventSourceServlet.leaveRoom(endUser, roomName + "@" + service + "." + server.getServerInfo().getXMPPDomain()))
+            if (connection == null)
             {
-                throw new ServiceException("Exception", "leave room failed", ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
+                throw new ServiceException("Exception", "xmpp connection not found", ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
             }
-*/
+
+            if (!connection.leaveRoom(roomName + "@" + service + "." + server.getServerInfo().getXMPPDomain()))
+            {
+                throw new ServiceException("Exception", "join room failed", ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
+            }
+
         } catch (Exception e) {
             throw new ServiceException("Exception", e.getMessage(), ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
         }
@@ -475,18 +566,21 @@ public class ChatService {
     }
 
     @POST
-    @Path("/rooms/{roomName}")
-    public Response postToRoom(@DefaultValue("conference") @QueryParam("service") String service, @PathParam("roomName") String roomName, String body) throws ServiceException
+    @Path("/{streamid}/rooms/{roomName}")
+    public Response postToRoom(@PathParam("streamid") String streamid, @DefaultValue("conference") @QueryParam("service") String service, @PathParam("roomName") String roomName, String body) throws ServiceException
     {
         try {
-/*
-            String endUser = getEndUser();
+           OpenfireConnection connection = OpenfireConnection.getConnection(streamid);
 
-            if (!RestEventSourceServlet.sendRoomMessage(endUser, roomName + "@" + service + "." + server.getServerInfo().getXMPPDomain(), body))
+            if (connection == null)
             {
-                throw new ServiceException("Exception", "send message to room failed", ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
+                throw new ServiceException("Exception", "xmpp connection not found", ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
             }
-*/
+
+            if (!connection.sendRoomMessage(roomName + "@" + service + "." + server.getServerInfo().getXMPPDomain(), body))
+            {
+                throw new ServiceException("Exception", "join room failed", ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
+            }
         } catch (Exception e) {
             throw new ServiceException("Exception", e.getMessage(), ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
         }
@@ -495,18 +589,21 @@ public class ChatService {
     }
 
     @POST
-    @Path("/rooms/{roomName}/{invitedJid}")
-    public Response inviteToRoom(@DefaultValue("conference") @QueryParam("service") String service, @PathParam("roomName") String roomName, @PathParam("invitedJid") String invitedJid, String reason) throws ServiceException
+    @Path("/{streamid}/rooms/{roomName}/{invitedJid}")
+    public Response inviteToRoom(@PathParam("streamid") String streamid, @DefaultValue("conference") @QueryParam("service") String service, @PathParam("roomName") String roomName, @PathParam("invitedJid") String invitedJid, String reason) throws ServiceException
     {
         try {
-/*
-            String endUser = getEndUser();
+           OpenfireConnection connection = OpenfireConnection.getConnection(streamid);
 
-            if (!RestEventSourceServlet.inviteToRoom(endUser, roomName + "@" + service + "." + server.getServerInfo().getXMPPDomain(), invitedJid, reason))
+            if (connection == null)
             {
-                throw new ServiceException("Exception", "invite to room failed", ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
+                throw new ServiceException("Exception", "xmpp connection not found", ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
             }
-*/
+
+            if (!connection.inviteToRoom(roomName + "@" + service + "." + server.getServerInfo().getXMPPDomain(), invitedJid, reason))
+            {
+                throw new ServiceException("Exception", "join room failed", ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
+            }
         } catch (Exception e) {
             throw new ServiceException("Exception", e.getMessage(), ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
         }

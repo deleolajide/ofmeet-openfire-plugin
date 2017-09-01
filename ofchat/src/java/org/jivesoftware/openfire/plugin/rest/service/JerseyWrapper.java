@@ -11,7 +11,6 @@ import java.lang.Class;
 import javax.servlet.ServletConfig;
 import javax.servlet.ServletException;
 
-import org.jivesoftware.admin.AuthCheckFilter;
 import org.jivesoftware.openfire.plugin.rest.exceptions.RESTExceptionMapper;
 import org.jivesoftware.util.JiveGlobals;
 
@@ -99,7 +98,7 @@ public class JerseyWrapper extends ServletContainer {
         prc.getClasses().add(MessageService.class);
         prc.getClasses().add(SipService.class);
         prc.getClasses().add(BookmarkService.class);
-        //prc.getClasses().add(ChatService.class);
+        prc.getClasses().add(ChatService.class);
         prc.getClasses().add(MeetService.class);
 
         prc.getClasses().add(RESTExceptionMapper.class);
@@ -158,8 +157,6 @@ public class JerseyWrapper extends ServletContainer {
     public void init(ServletConfig servletConfig) throws ServletException {
         loadAuthenticationFilter();
         super.init(servletConfig);
-        // Exclude this servlet from requering the user to login
-        AuthCheckFilter.addExclude(SERVLET_URL);
     }
 
     /*
@@ -170,8 +167,6 @@ public class JerseyWrapper extends ServletContainer {
     @Override
     public void destroy() {
         super.destroy();
-        // Release the excluded URL
-        AuthCheckFilter.removeExclude(SERVLET_URL);
     }
 
     /*

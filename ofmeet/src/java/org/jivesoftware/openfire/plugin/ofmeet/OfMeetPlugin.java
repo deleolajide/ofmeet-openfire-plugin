@@ -252,7 +252,7 @@ public class OfMeetPlugin implements Plugin, SessionEventListener, ClusterEventL
         publicWebApp.setContextPath( "/ofmeet" );
         publicWebApp.setClassLoader(this.getClass().getClassLoader());
 
-        if ( JiveGlobals.getBooleanProperty("ofmeet.security.enabled", false ) )
+        if ( JiveGlobals.getBooleanProperty("ofmeet.security.enabled", true ) )
         {
             Log.info("OfMeet Plugin - Initialize security");
             publicWebApp.setSecurityHandler(basicAuth("ofmeet"));

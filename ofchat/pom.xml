@@ -116,7 +116,13 @@
             <artifactId>xmppserver</artifactId>
             <scope>provided</scope>
         </dependency> 
-        
+
+        <dependency>
+            <groupId>org.igniterealtime.smack</groupId>
+            <artifactId>smack-java7</artifactId>
+            <version>4.2.1</version>
+        </dependency>
+    
         <dependency>
             <groupId>net.sf.json-lib</groupId>
             <artifactId>json-lib</artifactId>
@@ -233,6 +239,20 @@
         <dependency>
             <groupId>org.igniterealtime.smack</groupId>
             <artifactId>smack-core</artifactId>
+            <version>4.2.1</version>
+        </dependency>
+
+        <!-- https://mvnrepository.com/artifact/org.igniterealtime.smack/smack-im -->
+        <dependency>
+            <groupId>org.igniterealtime.smack</groupId>
+            <artifactId>smack-im</artifactId>
+            <version>4.2.1</version>
+        </dependency>
+        
+        <!-- https://mvnrepository.com/artifact/org.igniterealtime.smack/smack-extensions -->
+        <dependency>
+            <groupId>org.igniterealtime.smack</groupId>
+            <artifactId>smack-extensions</artifactId>
             <version>4.2.1</version>
         </dependency>
 

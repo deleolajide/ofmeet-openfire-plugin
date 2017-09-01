@@ -52,7 +52,7 @@
                         </goals>
                         <configuration>
                             <appendAssemblyId>false</appendAssemblyId>
-                            <finalName>${project.artifactId}</finalName>
+                            <finalName>ofocus</finalName>
                             <attach>false</attach>
                             <!-- This is where we use our shared assembly descriptor -->
                             <descriptorRefs>

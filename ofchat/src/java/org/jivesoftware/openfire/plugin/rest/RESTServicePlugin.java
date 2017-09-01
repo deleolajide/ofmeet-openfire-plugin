@@ -18,23 +18,31 @@ package org.jivesoftware.openfire.plugin.rest;
 
 import java.io.File;
 import java.util.*;
+import java.util.concurrent.*;
 
 import javax.ws.rs.core.Response;
 
+import org.jivesoftware.openfire.*;
+import org.jivesoftware.openfire.group.*;
 import org.jivesoftware.openfire.container.Plugin;
 import org.jivesoftware.openfire.container.PluginManager;
 import org.jivesoftware.openfire.http.HttpBindManager;
-import org.jivesoftware.openfire.XMPPServer;
+import org.jivesoftware.openfire.auth.AuthFactory;
+
+import org.jivesoftware.openfire.plugin.rest.service.JerseyWrapper;
+import org.jivesoftware.openfire.plugin.rest.controller.UserServiceController;
+import org.jivesoftware.openfire.plugin.rest.entity.UserEntities;
+import org.jivesoftware.openfire.plugin.rest.entity.UserEntity;
 import org.jivesoftware.openfire.plugin.rest.entity.SystemProperties;
 import org.jivesoftware.openfire.plugin.rest.entity.SystemProperty;
 import org.jivesoftware.openfire.plugin.rest.exceptions.ExceptionType;
 import org.jivesoftware.openfire.plugin.rest.exceptions.ServiceException;
+import org.jivesoftware.openfire.plugin.spark.*;
+
 import org.jivesoftware.util.JiveGlobals;
 import org.jivesoftware.util.PropertyEventDispatcher;
 import org.jivesoftware.util.PropertyEventListener;
 import org.jivesoftware.util.StringUtils;
-
-import org.jivesoftware.openfire.plugin.rest.service.JerseyWrapper;
 
 import org.eclipse.jetty.apache.jsp.JettyJasperInitializer;
 import org.eclipse.jetty.plus.annotation.ContainerInitializer;
@@ -53,6 +61,8 @@ import org.jivesoftware.openfire.plugin.spark.BookmarkInterceptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.jivesoftware.smack.OpenfireConnection;
+
 /**
  * The Class RESTServicePlugin.
  */
@@ -60,7 +70,7 @@ public class RESTServicePlugin implements Plugin, PropertyEventListener {
     private static final Logger Log = LoggerFactory.getLogger(RESTServicePlugin.class);
 
     /** The Constant INSTANCE. */
-    public static final RESTServicePlugin INSTANCE = new RESTServicePlugin();
+    public static RESTServicePlugin INSTANCE = null;
 
     private static final String CUSTOM_AUTH_FILTER_PROPERTY_NAME = "plugin.ofchat.customAuthFilter";
 
@@ -84,6 +94,8 @@ public class RESTServicePlugin implements Plugin, PropertyEventListener {
     private ServletContextHandler context2;
     private ServletContextHandler context3;
 
+    private ExecutorService executor;
+
 
     /**
      * Gets the single instance of RESTServicePlugin.
@@ -97,8 +109,11 @@ public class RESTServicePlugin implements Plugin, PropertyEventListener {
     /* (non-Javadoc)
      * @see org.jivesoftware.openfire.container.Plugin#initializePlugin(org.jivesoftware.openfire.container.PluginManager, java.io.File)
      */
-    public void initializePlugin(PluginManager manager, File pluginDirectory) {
+    public void initializePlugin(PluginManager manager, File pluginDirectory)
+    {
+        INSTANCE = this;
         secret = JiveGlobals.getProperty("plugin.restapi.secret", "");
+
         // If no secret key has been assigned, assign a random one.
         if ("".equals(secret)) {
             secret = StringUtils.randomString(16);
@@ -135,26 +150,23 @@ public class RESTServicePlugin implements Plugin, PropertyEventListener {
         initializers.add(new ContainerInitializer(new JettyJasperInitializer(), null));
         context.setAttribute("org.eclipse.jetty.containerInitializers", initializers);
         context.setAttribute(InstanceManager.class.getName(), new SimpleInstanceManager());
-
         HttpBindManager.getInstance().addJettyHandler(context);
 
-/*
         Log.info("Initialize SSE");
 
-        context2 = new ServletContextHandler(null, "/event", ServletContextHandler.SESSIONS);
+        context2 = new ServletContextHandler(null, "/sse", ServletContextHandler.SESSIONS);
         context2.setClassLoader(this.getClass().getClassLoader());
 
-        ServletHolder sseHolder = new ServletHolder(new RestEventSourceServlet());
-        sseHolder.setAsyncSupported(true);
-        context2.addServlet(sseHolder, "/source");
+        SecurityHandler securityHandler2 = basicAuth("ofchat");
 
-        final List<ContainerInitializer> initializers3 = new ArrayList<>();
-        initializers3.add(new ContainerInitializer(new JettyJasperInitializer(), null));
-        context2.setAttribute("org.eclipse.jetty.containerInitializers", initializers);
+        if (securityHandler2 != null) context2.setSecurityHandler(securityHandler2);
+
+        final List<ContainerInitializer> initializers2 = new ArrayList<>();
+        initializers2.add(new ContainerInitializer(new JettyJasperInitializer(), null));
+        context2.setAttribute("org.eclipse.jetty.containerInitializers", initializers2);
         context2.setAttribute(InstanceManager.class.getName(), new SimpleInstanceManager());
-
         HttpBindManager.getInstance().addJettyHandler(context2);
-*/
+
 
         Log.info("Initialize WebService ");
 
@@ -168,11 +180,65 @@ public class RESTServicePlugin implements Plugin, PropertyEventListener {
         context3.setAttribute("org.eclipse.jetty.containerInitializers", initializers3);
         context3.setAttribute(InstanceManager.class.getName(), new SimpleInstanceManager());
         context3.setWelcomeFiles(new String[]{"index.jsp"});
-
         HttpBindManager.getInstance().addJettyHandler(context3);
 
         bookmarkInterceptor = new BookmarkInterceptor();
         bookmarkInterceptor.start();
+
+        executor = Executors.newCachedThreadPool();
+
+        executor.submit(new Callable<Boolean>()
+        {
+            public Boolean call() throws Exception
+            {
+                UserEntities userEntities = UserServiceController.getInstance().getUserEntitiesByProperty("webpush.subscribe.%", null);
+                boolean isBookmarksAvailable = XMPPServer.getInstance().getPluginManager().getPlugin("bookmarks") != null;
+                Collection<Bookmark> bookmarks = null;
+
+                if (isBookmarksAvailable)
+                {
+                    bookmarks = BookmarkManager.getBookmarks();
+                }
+
+                for (UserEntity user : userEntities.getUsers())
+                {
+                    String username = user.getUsername();
+
+                    try {
+                       String password = AuthFactory.getPassword(username);
+
+                        OpenfireConnection connection = OpenfireConnection.createConnection(username, password);
+
+                        if (connection != null)
+                        {
+                            Log.info("Auto-login for user " + username + " sucessfull");
+                            connection.autoStarted = true;
+
+                            if (bookmarks != null)
+                            {
+                                for (Bookmark bookmark : bookmarks)
+                                {
+                                    boolean addBookmarkForUser = bookmark.isGlobalBookmark() || isBookmarkForJID(username, bookmark);
+
+                                    if (addBookmarkForUser)
+                                    {
+                                        if (bookmark.getType() == Bookmark.Type.group_chat)
+                                        {
+                                            connection.joinRoom(bookmark.getValue(), username);
+                                        }
+                                    }
+                                }
+                            }
+
+                        }
+
+                    } catch (Exception e) {
+                        Log.warn("Auto-login for user " + username + " failed");
+                    }
+                }
+                return true;
+            }
+        });
     }
 
     /* (non-Javadoc)
@@ -189,8 +255,10 @@ public class RESTServicePlugin implements Plugin, PropertyEventListener {
         }
 
         HttpBindManager.getInstance().removeJettyHandler(context);
-        //HttpBindManager.getInstance().removeJettyHandler(context2);
-       HttpBindManager.getInstance().removeJettyHandler(context3);
+        HttpBindManager.getInstance().removeJettyHandler(context2);
+        HttpBindManager.getInstance().removeJettyHandler(context3);
+
+        executor.shutdown();
     }
 
     /**
@@ -440,12 +508,12 @@ public class RESTServicePlugin implements Plugin, PropertyEventListener {
 
     public void addServlet(ServletHolder holder, String path)
     {
-       context.addServlet(holder, path);
+       context2.addServlet(holder, path);
     }
 
     public void removeServlets(ServletHolder deleteHolder)
     {
-       ServletHandler handler = context.getServletHandler();
+       ServletHandler handler = context2.getServletHandler();
        List<ServletHolder> servlets = new ArrayList<ServletHolder>();
        Set<String> names = new HashSet<String>();
 
@@ -481,5 +549,57 @@ public class RESTServicePlugin implements Plugin, PropertyEventListener {
 
        handler.setServletMappings( mappings.toArray(new ServletMapping[0]) );
        handler.setServlets( servlets.toArray(new ServletHolder[0]) );
+    }
+
+    private static final SecurityHandler basicAuth(String realm) {
+
+        OpenfireLoginService l = new OpenfireLoginService();
+        l.setName(realm);
+
+        Constraint constraint = new Constraint();
+        constraint.setName(Constraint.__BASIC_AUTH);
+        constraint.setRoles(new String[]{"ofchat"});
+        constraint.setAuthenticate(true);
+
+        ConstraintMapping cm = new ConstraintMapping();
+        cm.setConstraint(constraint);
+        cm.setPathSpec("/*");
+
+        ConstraintSecurityHandler csh = new ConstraintSecurityHandler();
+        csh.setAuthenticator(new BasicAuthenticator());
+        csh.setRealmName(realm);
+        csh.addConstraintMapping(cm);
+        csh.setLoginService(l);
+
+        return csh;
+    }
+
+    private boolean isBookmarkForJID(String username, Bookmark bookmark) {
+
+        if (username == null || username.equals("null")) return false;
+
+        if (bookmark.getUsers().contains(username)) {
+            return true;
+        }
+
+        Collection<String> groups = bookmark.getGroups();
+
+        if (groups != null && !groups.isEmpty()) {
+            GroupManager groupManager = GroupManager.getInstance();
+
+            for (String groupName : groups) {
+                try {
+                    Group group = groupManager.getGroup(groupName);
+
+                    if (group.isUser(username)) {
+                        return true;
+                    }
+                }
+                catch (GroupNotFoundException e) {
+                    Log.debug(e.getMessage(), e);
+                }
+            }
+        }
+        return false;
     }
 }

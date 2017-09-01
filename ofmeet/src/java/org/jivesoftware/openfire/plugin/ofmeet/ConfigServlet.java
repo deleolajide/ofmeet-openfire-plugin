@@ -134,7 +134,7 @@ public class ConfigServlet extends HttpServlet
 
             final JSONObject config = new JSONObject();
 
-            boolean securityEnabled = JiveGlobals.getBooleanProperty("ofmeet.security.enabled", false);
+            boolean securityEnabled = JiveGlobals.getBooleanProperty("ofmeet.security.enabled", true);
 
             if (securityEnabled && request.getUserPrincipal() != null)
             {
