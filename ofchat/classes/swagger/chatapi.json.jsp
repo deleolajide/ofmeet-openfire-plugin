@@ -10,7 +10,7 @@
         "version":"0.0.2",
         "title":"Chat API for Openfire"
     },
-    "host":"<%= JiveGlobals.getProperty("network.interface", XMPPServer.getInstance().getServerInfo().getHostname()) + ":" + JiveGlobals.getProperty("httpbind.port.secure", "7443") %>",
+    "host":"<%= JiveGlobals.getProperty("network.interface", XMPPServer.getInstance().getServerInfo().getHostname()) + ":" + JiveGlobals.getProperty("httpbind.port.plain", "7070") %>",
     "basePath":"/rest/api",
     "tags": [
     {
@@ -665,185 +665,7 @@
                     }
                 }
             }
-        },
-        "/restapi/v1/chat/assists":{
-            "get":{
-        "tags": [
-            "Chat"
-        ],
-        "summary": "Retrieve all asistance workgroups",
-        "description": "",               
-                "consumes":[
-                ],
-                "produces":[
-                    "application/json",
-                    "application/xml"
-                ],
-                "parameters":[
-                ],
-                "responses":{
-                    "200":{
-                        "description":"OK",
-                        "headers":{
-                        },
-                        "schema":{
-                            "$ref":"#/definitions/WorkgroupEntities"
-                        }
-                    }
-                }
-            }
-        },
-        "/restapi/v1/chat/assists/{workgroup}":{
-            "get":{
-        "tags": [
-            "Chat"
-        ],
-        "summary": "Retrieve queue info for the asistance workgroup",
-        "description": "",            
-                "consumes":[
-                ],
-                "produces":[
-                    "application/json",
-                    "application/xml"
-                ],
-                "parameters":[
-                    {
-                        "type":"string",
-                        "name":"workgroup",
-                        "in":"path",
-                        "required":true
-                    }
-                ],
-                "responses":{
-                    "200":{
-                        "description":"OK",
-                        "headers":{
-                        },
-                        "schema":{
-                            "$ref":"#/definitions/AssistQueues"
-                        }
-                    }
-                }
-            },
-            "put":{
-        "tags": [
-            "Chat"
-        ],
-        "summary": "Add user to the assistance workgroup as an agent",
-        "description": "",              
-                "consumes":[
-                ],
-                "produces":[
-                ],
-                "parameters":[
-                    {
-                        "type":"string",
-                        "name":"workgroup",
-                        "in":"path",
-                        "required":true
-                    }
-                ],
-                "responses":{
-                    "200":{
-                        "description":"OK",
-                        "headers":{
-                        }
-                    }
-                }
-            },
-            "delete":{
-        "tags": [
-            "Chat"
-        ],
-        "summary": "Remove user from the assistance workgroup as an agent",
-        "description": "",            
-                "consumes":[
-                ],
-                "produces":[
-                ],
-                "parameters":[
-                    {
-                        "type":"string",
-                        "name":"workgroup",
-                        "in":"path",
-                        "required":true
-                    }
-                ],
-                "responses":{
-                    "200":{
-                        "description":"OK",
-                        "headers":{
-                        }
-                    }
-                }
-            }
-        },
-        "/restapi/v1/chat/assists/{workgroup}/{offerId}":{
-            "put":{
-        "tags": [
-            "Chat"
-        ],
-        "summary": "Accept assistance offer from a user",
-        "description": "",            
-                "consumes":[
-                ],
-                "produces":[
-                ],
-                "parameters":[
-                    {
-                        "type":"string",
-                        "name":"offerId",
-                        "in":"path",
-                        "required":true
-                    },
-                    {
-                        "type":"string",
-                        "name":"workgroup",
-                        "in":"path",
-                        "required":true
-                    }
-                ],
-                "responses":{
-                    "200":{
-                        "description":"OK",
-                        "headers":{
-                        }
-                    }
-                }
-            },
-            "delete":{
-        "tags": [
-            "Chat"
-        ],
-        "summary": "Reject assistance offer from a user",
-        "description": "",              
-                "consumes":[
-                ],
-                "produces":[
-                ],
-                "parameters":[
-                    {
-                        "type":"string",
-                        "name":"offerId",
-                        "in":"path",
-                        "required":true
-                    },
-                    {
-                        "type":"string",
-                        "name":"workgroup",
-                        "in":"path",
-                        "required":true
-                    }
-                ],
-                "responses":{
-                    "200":{
-                        "description":"OK",
-                        "headers":{
-                        }
-                    }
-                }
-            }
-        },        
+        },     
         "/restapi/v1/chat/rooms":{
             "get":{
         "tags": [
@@ -1051,6 +873,142 @@
                 }
             }
         },
+        "/restapi/v1/chat/{streamid}/assists":{
+            "get":{
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Retrieve all asistance workgroups",
+                "description": "",                 
+                "consumes":[
+                ],
+                "produces":[
+                    "application/json",
+                    "application/xml"
+                ],
+                "parameters":[
+                    {
+                        "type":"string",
+                        "name":"streamid",
+                        "in":"path",
+                        "required":true
+                    }
+                ],
+                "responses":{
+                    "200":{
+                        "description":"OK",
+                        "headers":{
+                        },
+                        "schema":{
+                            "$ref":"#/definitions/WorkgroupEntities"
+                        }
+                    }
+                }
+            }
+        },
+        "/restapi/v1/chat/{streamid}/assists/{workgroup}":{
+            "get":{
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Retrieve queue info for the asistance workgroup",
+                "description": "",            
+                "consumes":[
+                ],
+                "produces":[
+                    "application/json",
+                    "application/xml"
+                ],
+                "parameters":[
+                    {
+                        "type":"string",
+                        "name":"streamid",
+                        "in":"path",
+                        "required":true
+                    },
+                    {
+                        "type":"string",
+                        "name":"workgroup",
+                        "in":"path",
+                        "required":true
+                    }
+                ],
+                "responses":{
+                    "200":{
+                        "description":"OK",
+                        "headers":{
+                        },
+                        "schema":{
+                            "$ref":"#/definitions/AssistQueues"
+                        }
+                    }
+                }
+            },
+            "post":{
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Add user to the assistance workgroup as an agent",
+                "description": "",                  
+                "consumes":[
+                ],
+                "produces":[
+                ],
+                "parameters":[
+                    {
+                        "type":"string",
+                        "name":"streamid",
+                        "in":"path",
+                        "required":true
+                    },
+                    {
+                        "type":"string",
+                        "name":"workgroup",
+                        "in":"path",
+                        "required":true
+                    }
+                ],
+                "responses":{
+                    "200":{
+                        "description":"OK",
+                        "headers":{
+                        }
+                    }
+                }
+            },
+            "delete":{
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Remove user from the assistance workgroup as an agent",
+                "description": "",               
+                "consumes":[
+                ],
+                "produces":[
+                ],
+                "parameters":[
+                    {
+                        "type":"string",
+                        "name":"streamid",
+                        "in":"path",
+                        "required":true
+                    },
+                    {
+                        "type":"string",
+                        "name":"workgroup",
+                        "in":"path",
+                        "required":true
+                    }
+                ],
+                "responses":{
+                    "200":{
+                        "description":"OK",
+                        "headers":{
+                        }
+                    }
+                }
+            }
+        },        
         "/restapi/v1/chat/{streamid}/chatstate/{state}/{to}":{
             "post":{
                 "tags": [
@@ -1371,6 +1329,72 @@
                 }
             }
         },
+        "/restapi/v1/chat/{streamid}/offer/{offerId}":{
+            "post":{
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Accept assistance offer from a user",
+                "description": "",               
+                "consumes":[
+                ],
+                "produces":[
+                ],
+                "parameters":[
+                    {
+                        "type":"string",
+                        "name":"offerId",
+                        "in":"path",
+                        "required":true
+                    },
+                    {
+                        "type":"string",
+                        "name":"streamid",
+                        "in":"path",
+                        "required":true
+                    }
+                ],
+                "responses":{
+                    "200":{
+                        "description":"OK",
+                        "headers":{
+                        }
+                    }
+                }
+            },
+            "delete":{
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Reject assistance offer from a user",
+                "description": "",                
+                "consumes":[
+                ],
+                "produces":[
+                ],
+                "parameters":[
+                    {
+                        "type":"string",
+                        "name":"offerId",
+                        "in":"path",
+                        "required":true
+                    },
+                    {
+                        "type":"string",
+                        "name":"streamid",
+                        "in":"path",
+                        "required":true
+                    }
+                ],
+                "responses":{
+                    "200":{
+                        "description":"OK",
+                        "headers":{
+                        }
+                    }
+                }
+            }
+        },        
         "/restapi/v1/chat/{streamid}/presence":{
             "post":{
                 "tags": [

@@ -618,56 +618,81 @@ public class ChatService {
     //-------------------------------------------------------
 
     @GET
-    @Path("/assists")
+    @Path("/{streamid}/assists")
     @Produces({MediaType.APPLICATION_XML, MediaType.APPLICATION_JSON})
-    public WorkgroupEntities getUser() throws ServiceException
+    public WorkgroupEntities getWorkgroups(@PathParam("streamid") String streamid) throws ServiceException
     {
-        String source = getEndUser();
-        String jid = source + "@" + server.getServerInfo().getXMPPDomain();
-        String service = "workgroup." + server.getServerInfo().getXMPPDomain();
+        try {
+           OpenfireConnection connection = OpenfireConnection.getConnection(streamid);
 
-        WorkgroupEntities workgroups = null; //RestEventSourceServlet.getWorkgroups(source, jid, service);
+            if (connection == null)
+            {
+                throw new ServiceException("Exception", "xmpp connection not found", ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
+            }
 
-        if (workgroups == null)
-        {
-            throw new ServiceException("Exception", "get workgroups failed", ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
+            String jid = connection.getUsername() + "@" + server.getServerInfo().getXMPPDomain();
+            String service = "workgroup." + server.getServerInfo().getXMPPDomain();
+
+            WorkgroupEntities workgroups = connection.getWorkgroups(jid, service);
+
+            if (workgroups == null)
+            {
+                throw new ServiceException("Exception", "get workgroups failed", ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
+            }
+            return workgroups;
+
+        } catch (Exception e) {
+            throw new ServiceException("Exception", e.getMessage(), ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
         }
-        return workgroups;
     }
 
     @GET
-    @Path("/assists/{workgroup}")
+    @Path("/{streamid}/assists/{workgroup}")
     @Produces({MediaType.APPLICATION_XML, MediaType.APPLICATION_JSON})
-    public AssistQueues getQueues(@PathParam("workgroup") String workgroup) throws ServiceException
-    {
-        String endUser = getEndUser();
-
-        if (workgroup.indexOf("@") == -1) workgroup = workgroup + "@workgroup." + server.getServerInfo().getXMPPDomain();
-
-        AssistQueues queues = null; //RestEventSourceServlet.getQueues(endUser, workgroup);
-
-        if (queues == null)
-        {
-            throw new ServiceException("Exception", "get workgroup queues failed", ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
-        }
-        return queues;
-    }
-
-    @PUT
-    @Path("/assists/{workgroup}")
-    public Response joinWorkgroup(@PathParam("workgroup") String workgroup) throws ServiceException
+    public AssistQueues getQueues(@PathParam("streamid") String streamid, @PathParam("workgroup") String workgroup) throws ServiceException
     {
         try {
-/*
-            String endUser = getEndUser();
+           OpenfireConnection connection = OpenfireConnection.getConnection(streamid);
+
+            if (connection == null)
+            {
+                throw new ServiceException("Exception", "xmpp connection not found", ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
+            }
 
             if (workgroup.indexOf("@") == -1) workgroup = workgroup + "@workgroup." + server.getServerInfo().getXMPPDomain();
 
-            if (!RestEventSourceServlet.joinWorkgroup(endUser, workgroup))
+            AssistQueues queues = connection.getQueues(workgroup);
+
+            if (queues == null)
+            {
+                throw new ServiceException("Exception", "get workgroup queues failed", ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
+            }
+            return queues;
+
+        } catch (Exception e) {
+            throw new ServiceException("Exception", e.getMessage(), ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
+        }
+    }
+
+    @POST
+    @Path("/{streamid}/assists/{workgroup}")
+    public Response joinWorkgroup(@PathParam("streamid") String streamid, @PathParam("workgroup") String workgroup) throws ServiceException
+    {
+        try {
+           OpenfireConnection connection = OpenfireConnection.getConnection(streamid);
+
+            if (connection == null)
+            {
+                throw new ServiceException("Exception", "xmpp connection not found", ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
+            }
+
+            if (workgroup.indexOf("@") == -1) workgroup = workgroup + "@workgroup." + server.getServerInfo().getXMPPDomain();
+
+            if (!connection.joinWorkgroup(workgroup))
             {
                 throw new ServiceException("Exception", "join workgroup failed", ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
             }
-*/
+
         } catch (Exception e) {
             throw new ServiceException("Exception", e.getMessage(), ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
         }
@@ -675,21 +700,24 @@ public class ChatService {
         return Response.status(Response.Status.OK).build();
     }
 
-    @PUT
-    @Path("/assists/{workgroup}/{offerId}")
-    public Response acceptOffer(@PathParam("workgroup") String workgroup, @PathParam("offerId") String offerId) throws ServiceException
+    @POST
+    @Path("/{streamid}/offer/{offerId}")
+    public Response acceptOffer(@PathParam("streamid") String streamid, @PathParam("offerId") String offerId) throws ServiceException
     {
         try {
-/*
-            String endUser = getEndUser();
 
-            if (workgroup.indexOf("@") == -1) workgroup = workgroup + "@workgroup." + server.getServerInfo().getXMPPDomain();
+           OpenfireConnection connection = OpenfireConnection.getConnection(streamid);
 
-            if (!RestEventSourceServlet.acceptOffer(endUser, workgroup, offerId))
+            if (connection == null)
+            {
+                throw new ServiceException("Exception", "xmpp connection not found", ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
+            }
+
+            if (!connection.acceptOffer(offerId))
             {
                 throw new ServiceException("Exception", "accept offer failed", ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
             }
-*/
+
         } catch (Exception e) {
             throw new ServiceException("Exception", e.getMessage(), ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
         }
@@ -698,20 +726,22 @@ public class ChatService {
     }
 
     @DELETE
-    @Path("/assists/{workgroup}/{offerId}")
-    public Response rejectOffer(@PathParam("workgroup") String workgroup, @PathParam("offerId") String offerId) throws ServiceException
+    @Path("/{streamid}/offer/{offerId}")
+    public Response rejectOffer(@PathParam("streamid") String streamid, @PathParam("offerId") String offerId) throws ServiceException
     {
         try {
-/*
-            String endUser = getEndUser();
+           OpenfireConnection connection = OpenfireConnection.getConnection(streamid);
 
-            if (workgroup.indexOf("@") == -1) workgroup = workgroup + "@workgroup." + server.getServerInfo().getXMPPDomain();
+            if (connection == null)
+            {
+                throw new ServiceException("Exception", "xmpp connection not found", ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
+            }
 
-            if (!RestEventSourceServlet.rejectOffer(endUser, workgroup, offerId))
+            if (!connection.rejectOffer(offerId))
             {
                 throw new ServiceException("Exception", "reject offer failed", ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
             }
-*/
+
         } catch (Exception e) {
             throw new ServiceException("Exception", e.getMessage(), ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
         }
@@ -721,20 +751,24 @@ public class ChatService {
 
 
     @DELETE
-    @Path("/assists/{workgroup}")
-    public Response leaveWorkgroup(@PathParam("workgroup") String workgroup) throws ServiceException
+    @Path("/{streamid}/assists/{workgroup}")
+    public Response leaveWorkgroup(@PathParam("streamid") String streamid, @PathParam("workgroup") String workgroup) throws ServiceException
     {
         try {
-/*
-            String endUser = getEndUser();
+           OpenfireConnection connection = OpenfireConnection.getConnection(streamid);
+
+            if (connection == null)
+            {
+                throw new ServiceException("Exception", "xmpp connection not found", ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
+            }
 
             if (workgroup.indexOf("@") == -1) workgroup = workgroup + "@workgroup." + server.getServerInfo().getXMPPDomain();
 
-            if (!RestEventSourceServlet.leaveWorkgroup(endUser, workgroup))
+            if (!connection.leaveWorkgroup(workgroup))
             {
                 throw new ServiceException("Exception", "leave workgroup failed", ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
             }
-*/
+
         } catch (Exception e) {
             throw new ServiceException("Exception", e.getMessage(), ExceptionType.ILLEGAL_ARGUMENT_EXCEPTION, Response.Status.BAD_REQUEST);
         }

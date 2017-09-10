@@ -45,6 +45,9 @@ import org.jivesoftware.smackx.muc.*;
 import org.jivesoftware.smackx.muc.packet.*;
 import org.jivesoftware.smackx.chatstates.*;
 import org.jivesoftware.smackx.*;
+import org.jivesoftware.smackx.workgroup.*;
+import org.jivesoftware.smackx.workgroup.user.*;
+import org.jivesoftware.smackx.workgroup.agent.*;
 
 import org.jxmpp.jid.*;
 import org.jxmpp.jid.impl.JidCreate;
@@ -66,6 +69,8 @@ import org.slf4j.LoggerFactory;
 import org.xmpp.packet.JID;
 import org.dom4j.*;
 
+import net.sf.json.*;
+
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserFactory;
 
@@ -86,11 +91,16 @@ import org.ifsoft.meet.MeetController;
  * @see XMPPConnection
  * @author Guenther Niess
  */
-public class OpenfireConnection extends AbstractXMPPConnection implements ChatMessageListener, ChatManagerListener, StanzaListener, RosterListener, InvitationListener, InvitationRejectionListener {
+public class OpenfireConnection extends AbstractXMPPConnection implements ChatMessageListener, ChatManagerListener, StanzaListener, RosterListener, InvitationListener, InvitationRejectionListener, OfferListener {
     private static Logger Log = LoggerFactory.getLogger( "OpenfireConnection" );
 
     private static final ConcurrentHashMap<String, OpenfireConnection> connections = new ConcurrentHashMap<String, OpenfireConnection>();
     private static final ConcurrentHashMap<String, OpenfireConnection> users = new ConcurrentHashMap<String, OpenfireConnection>();
+
+    private static final ConcurrentHashMap<String, AssistEntity> assits = new ConcurrentHashMap<String, AssistEntity>();
+    private static final ConcurrentHashMap<String, Presence> workgroupPresence = new ConcurrentHashMap<String, Presence>();
+    private static final ConcurrentHashMap<String, Workgroup> assistWorkgroups = new ConcurrentHashMap<String, Workgroup>();
+    private static final ConcurrentHashMap<String, OpenfireConnection> assistConnections = new ConcurrentHashMap<String, OpenfireConnection>();
 
     private boolean reconnect = false;
     private LocalClientSession session;
@@ -107,6 +117,11 @@ public class OpenfireConnection extends AbstractXMPPConnection implements ChatMe
     public Roster roster;
     public OpenfireConfiguration config;
     public boolean autoStarted = false;
+
+    private Workgroup wgroup;
+    private AgentSession agentSession;
+    private OfferListener offerListener;
+    private Map<String, Offer> offerMap = new HashMap<String, Offer>();
 
 
     // -------------------------------------------------------
@@ -177,6 +192,16 @@ public class OpenfireConnection extends AbstractXMPPConnection implements ChatMe
 
         if (connection != null)
         {
+            if (connection.agentSession != null)
+            {
+                try {
+                    connection.agentSession.removeOfferListener(connection);
+                    connection.agentSession.setOnline(false);
+                } catch (Exception e) {
+                    Log.error("removeConnection", e);
+                }
+            }
+
             users.remove(connection.getUsername());
             connection.removePacketListener(connection);
             connection.disconnect(new Presence(Presence.Type.unavailable));
@@ -330,25 +355,32 @@ public class OpenfireConnection extends AbstractXMPPConnection implements ChatMe
     protected void loginInternal(String username, String password, Resourcepart resource) throws XMPPException
     {
         try {
-            username = username.toLowerCase().trim();
-            user = getUserJid();
-            JID userJid = XMPPServer.getInstance().createJID(username, resource.toString());
-
-            session = (LocalClientSession) SessionManager.getInstance().getSession(userJid);
-
-            if (session != null)
-            {
-                session.close();
-                SessionManager.getInstance().removeSession(session);
-            }
-
             AuthToken authToken = null;
 
-            try {
-                authToken = AuthFactory.authenticate( username, password );
-
-            } catch ( UnauthorizedException e ) {
+            if (username == null || password == null || "".equals(username) || "".equals(password))
+            {
                 authToken = new AuthToken(resource.toString(), true);
+
+            } else {
+                username = username.toLowerCase().trim();
+                user = getUserJid();
+                JID userJid = XMPPServer.getInstance().createJID(username, resource.toString());
+
+                session = (LocalClientSession) SessionManager.getInstance().getSession(userJid);
+
+                if (session != null)
+                {
+                    session.close();
+                    SessionManager.getInstance().removeSession(session);
+                }
+
+
+                try {
+                    authToken = AuthFactory.authenticate( username, password );
+
+                } catch ( UnauthorizedException e ) {
+                    authToken = new AuthToken(resource.toString(), true);
+                }
             }
 
             session = SessionManager.getInstance().createClientSession( smackConnection, (Locale) null );
@@ -359,7 +391,7 @@ public class OpenfireConnection extends AbstractXMPPConnection implements ChatMe
             afterSuccessfulLogin(false);
 
         } catch (Exception e) {
-            Log.error("XMPPConnection login error", e);
+            Log.error("loginInternal", e);
         }
     }
 
@@ -678,6 +710,502 @@ public class OpenfireConnection extends AbstractXMPPConnection implements ChatMe
 
     // -------------------------------------------------------
     //
+    // Workgroup Agents
+    //
+    // -------------------------------------------------------
+
+    public Workgroup getWorkgroup() {
+        return wgroup;
+    }
+
+    public AgentSession getAgentSession() {
+        return agentSession;
+    }
+
+    public boolean joinWorkgroup(String workgroup)
+    {
+        Log.debug("joinWorkgroup " + workgroup);
+
+        if (agentSession != null && agentSession.isOnline())
+        {
+            try {
+                agentSession.setOnline(false);
+                agentSession.setOnline(true);
+            }
+            catch (Exception e) {
+                Log.error("joinWorkgroup", e);
+                return false;
+            }
+        }
+        else {
+
+            try {
+                agentSession = new AgentSession(JidCreate.entityBareFrom(workgroup), this);
+                agentSession.addOfferListener(this);
+                agentSession.setOnline(true);
+            }
+            catch (Exception e1) {
+                Log.error("joinWorkgroup", e1);
+                return false;
+            }
+        }
+
+        Presence toWorkgroupPresence = new Presence(Presence.Type.available, "online", 1, Presence.Mode.available);
+        toWorkgroupPresence.setTo(workgroup);
+
+        try {
+            sendPacket(toWorkgroupPresence);
+            wgroup = new Workgroup(JidCreate.entityBareFrom(workgroup), this);
+        }
+        catch (Exception e) {
+            Log.error("joinWorkgroup", e);
+            return false;
+        }
+
+        agentSession.addOfferListener(this);
+        return true;
+    }
+
+    public boolean leaveWorkgroup(String workgroup)
+    {
+        if (agentSession != null && agentSession.isOnline())
+        {
+            Log.debug("leaveWorkgroup " + workgroup);
+            try {
+                agentSession.setOnline(false);
+                return true;
+            }
+            catch (Exception e) {
+                Log.error("leaveWorkgroup", e);
+                return false;
+            }
+        }
+        return false;
+    }
+
+    public boolean acceptOffer(String offerId)
+    {
+        if (offerMap.containsKey(offerId) && agentSession.isOnline())
+        {
+            Log.debug("acceptOffer " + offerId);
+            try {
+                offerMap.get(offerId).accept();
+                return true;
+            }
+            catch (Exception e) {
+                Log.error("acceptOffer", e);
+                return false;
+            }
+        }
+        return false;
+    }
+
+    public boolean rejectOffer(String offerId)
+    {
+        if (offerMap.containsKey(offerId) && agentSession.isOnline())
+        {
+            Log.debug("rejectOffer " + offerId);
+
+            try {
+                offerMap.get(offerId).reject();
+                return true;
+            }
+            catch (Exception e) {
+                Log.error("rejectOffer", e);
+                return false;
+            }
+        }
+        return false;
+    }
+
+    public void offerReceived(final Offer offer)
+    {
+        Map metaData = offer.getMetaData();
+
+        Log.debug("offerReceived " + offer.getSessionID() + " " + metaData);
+
+        offerMap.put(offer.getSessionID(), offer);
+
+        JSONObject jsonMetadata = new JSONObject();
+
+        for (Object key : metaData.keySet())
+        {
+            String parameter = (String) key;
+            ArrayList values = (ArrayList) metaData.get(parameter);
+            jsonMetadata.put(parameter, values.get(0));
+        }
+
+        clientServlet.broadcast("chatapi.assist", "{\"type\": \"offerReceived\", \"workgroup\":\"" + offer.getWorkgroupName() + "\", \"id\":\"" + offer.getSessionID() + "\", \"from\":\"" + offer.getUserJID() + "\", \"metaData\": " + jsonMetadata.toString() + "}");
+    }
+
+    public void offerRevoked(final RevokedOffer offer)
+    {
+        Log.debug("offerRevoked " + offer.getSessionID());
+
+        offerMap.remove(offer.getSessionID());
+        clientServlet.broadcast("chatapi.assist", "{\"type\": \"offerRevoked\", \"workgroup\":\"" + offer.getWorkgroupName() + "\", \"id\":\"" + offer.getSessionID() + "\", \"from\":\"" + offer.getUserJID() + "\", \"reason\": \"" + offer.getReason() + "\"}");
+    }
+
+
+    public WorkgroupEntities getWorkgroups(String jid, String service) {
+        Log.debug("getWorkgroups " + jid + " " + service);
+
+        Collection<String> workgroups = new ArrayList<String>();
+
+        try {
+            workgroups = Agent.getWorkgroups(JidCreate.entityBareFrom(service), JidCreate.entityBareFrom(jid), this);
+
+        } catch (Exception e) { // no need to trap error
+
+        }
+
+        return new WorkgroupEntities(workgroups);
+    }
+
+    public AssistQueues getQueues(String service) {
+        Log.debug("getQueues " + service);
+
+        List<AssistQueue> queues = new ArrayList<AssistQueue>();
+
+        if (agentSession != null && agentSession.isOnline())
+        {
+            try {
+                Iterator<WorkgroupQueue> iter = agentSession.getQueues();
+
+                while(iter.hasNext())
+                {
+                    WorkgroupQueue queue = iter.next();
+                    AssistQueue assistQueue = new AssistQueue(queue.getName().toString(), queue.getStatus().toString(), queue.getAverageWaitTime(), queue.getOldestEntry(), queue.getMaxChats(), queue.getCurrentChats());
+
+                    Iterator<QueueUser> iter2 = queue.getUsers();
+                    List<QueueItem> users = new ArrayList<QueueItem>();
+
+                    while(iter2.hasNext())
+                    {
+                        QueueUser user = iter2.next();
+                        users.add(new QueueItem (user.getUserID(), user.getQueuePosition(), user.getEstimatedRemainingTime(), user.getQueueJoinTimestamp()));
+                    }
+
+                    assistQueue.setUsers(users);
+                    queues.add(assistQueue);
+                }
+            }
+            catch (Exception e) {
+                Log.error("rejectOffer", e);
+            }
+        }
+
+        return new AssistQueues(queues);
+    }
+
+
+    // -------------------------------------------------------
+    //
+    // Workgroup Users
+    //
+    // -------------------------------------------------------
+
+    public static boolean joinAssistChat(String userid) throws XMPPException {
+        Log.debug("joinAssistChat " + userid);
+
+        AssistEntity assistance = assits.get(userid);
+
+        if (assistance != null) {
+            try {
+                assistance.getChatroom().join(Resourcepart.from(userid));
+            } catch (Exception e) {
+                Log.error("joinAssistChat", e);
+                return false;
+            }
+            return true;
+        }
+        return false;
+    }
+
+    public static boolean sendAssistMessage(String userid, String text) throws XMPPException {
+        Log.debug("sendAssistMessage " + userid);
+
+        AssistEntity assistance = assits.get(userid);
+
+        if (assistance != null) {
+            try {
+                assistance.getChatroom().sendMessage(text);
+            } catch (Exception e) {
+                Log.error("sendAssistMessage", e);
+                return false;
+            }
+            return true;
+        }
+        return false;
+    }
+
+    public static AskQueue queryAssistance(String userid) {
+        Log.debug("queryAssistance " + userid);
+
+        AssistEntity assistance = assits.get(userid);
+
+        if (assistance != null)
+        {
+            OpenfireConnection assistConnection = getXMPPConnection(userid);
+
+            if (assistConnection != null) {
+                try {
+                    Workgroup workgroup = getWorkgroup(assistance, assistConnection);
+
+                    if (workgroup != null) {
+                        return new AskQueue(workgroup.getWorkgroupJID().toString(), workgroup.isInQueue(), workgroup.isAvailable(),
+                                workgroup.getQueuePosition(), workgroup.getQueueRemainingTime());
+                    }
+                } catch (Exception e) {
+                    Log.error("queryAssistance", e);
+                    return null;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    public static String revokeAssistance(String userid) throws XMPPException {
+        Log.debug("revoveAssistance " + userid);
+
+        try {
+            AssistEntity assistance = assits.remove(userid);
+
+            if (assistance != null) {
+                if (assistance.getChatroom() != null) {
+                    assistance.getChatroom().leave();
+                }
+
+                Workgroup workgroup = (Workgroup) assistWorkgroups.remove(assistance.getWorkgroup() + "-" + assistance.getUserID());
+
+                if (workgroup != null && assistance.getChatroom() == null) {
+                    workgroup.departQueue();
+                    assistance.setGroupchat("revoked");
+                }
+
+            } else
+                return "Assistance not found for " + userid;
+
+            OpenfireConnection assistConnection = (OpenfireConnection) assistConnections.remove(userid);
+
+            if (assistConnection != null) {
+                assistConnection.disconnect(new Presence(Presence.Type.unavailable));
+
+            } else return "Connection unavailable for " + userid;
+
+        } catch (Exception e) {
+            Log.error("revokeAssistance", e);
+        }
+
+        return null;
+    }
+
+    public static String requestAssistance(AssistEntity assistance) {
+        Log.debug("requestAssistance \n" + assistance.getWorkgroup() + " " + assistance.getUserID() + " "
+                + assistance.getEmailAddress() + " " + assistance.getQuestion());
+
+        if (assistance.getWorkgroup() == null || assistance.getUserID() == null || assistance.getEmailAddress() == null
+                || assistance.getQuestion() == null) {
+            return "workgroup, username, email and question must be provided";
+        }
+
+        String userid = assistance.getUserID();
+        String workgroupName = assistance.getWorkgroup() + "@workgroup." + XMPPServer.getInstance().getServerInfo().getXMPPDomain();
+
+        OpenfireConnection assistConnection = getXMPPConnection(userid);
+
+        if (assistConnection != null) {
+            Workgroup workgroup = getWorkgroup(assistance, assistConnection);
+
+            if (workgroup != null) {
+                if (isOnline(assistance, assistConnection)) {
+                    Map details = new HashMap();
+                    details.put("username", userid);
+                    details.put("email", assistance.getEmailAddress());
+                    details.put("question", assistance.getQuestion());
+
+                    try {
+                        assistance.setGroupchat(null);
+                        assits.put(userid, assistance);
+
+                        workgroup.joinQueue(details, JidCreate.entityBareFrom(assistConnection.getConfig().getResource() + "@" + assistConnection.getConfig().getXMPPServiceDomain()));
+
+                        int counter = 0;
+
+                        while (assistance.getGroupchat() == null && counter < 180) {
+                            try {
+                                Thread.sleep(1000);
+                            } catch (InterruptedException ie) {
+                            }
+
+                            counter++;
+                        }
+
+                        if (counter < 180) {
+                            return null;
+
+                        } else {
+                            Log.warn("requestAssistance no agent responded " + workgroupName);
+                            return "Timeout error, no agent available";
+                        }
+                    } catch (Exception e) {
+                        Log.error("Unable to join chat queue." + workgroupName, e);
+                        return "Unable to join chat queue - " + e;
+                    }
+
+                } else {
+                    Log.warn("requestAssistance workgroup is offline " + workgroupName);
+                    return "Workgroup is offline";
+
+                }
+            } else {
+                Log.error("requestAssistance workgroup is not configured " + workgroupName);
+                return "Workgroup is not configured";
+            }
+
+        } else {
+            Log.error("requestAssistance cannot create xmpp conection " + userid);
+            return null;
+        }
+    }
+
+    private static OpenfireConnection getXMPPConnection(final String userid) {
+        if (assistConnections.containsKey(userid) == false) {
+            try {
+                OpenfireConfiguration config = OpenfireConfiguration.builder()
+                  .setUsernameAndPassword(userid, null)
+                  .setXmppDomain(XMPPServer.getInstance().getServerInfo().getXMPPDomain())
+                  .setResource(userid)
+                  .setHost(XMPPServer.getInstance().getServerInfo().getHostname())
+                  .setPort(0)
+                  .build();
+
+                final OpenfireConnection connection = new OpenfireConnection(config);
+                connection.connect();
+
+                connection.addPacketListener(new PacketListener() {
+                    public void processStanza(Stanza packet) {
+                        Message message = (Message) packet;
+
+                        if (message.getType() == Message.Type.groupchat) {
+                            Log.debug("Ask grpupchat message: " + message.getFrom() + "\n" + message.getBody());
+                            connection.clientServlet.broadcast("chatapi.ask", "{\"type\": \"" + message.getType() + "\", \"to\":\"" + message.getTo()
+                                            + "\", \"from\":\"" + message.getFrom() + "\", \"body\": \""
+                                            + message.getBody() + "\"}");
+                        }
+                    }
+
+                }, new PacketTypeFilter(Message.class));
+
+                connection.login();
+                assistConnections.put(userid, connection);
+
+            } catch (Exception e) {
+                Log.error("getXMPPConnection", e);
+                return null;
+            }
+        }
+
+        return assistConnections.get(userid);
+    }
+
+    private static Workgroup getWorkgroup(AssistEntity assistance, final OpenfireConnection assistConnection) {
+        String key = assistance.getWorkgroup() + "-" + assistance.getUserID();
+        String workgroupName = assistance.getWorkgroup() + "@workgroup." + XMPPServer.getInstance().getServerInfo().getXMPPDomain();
+
+        Workgroup workgroup = (Workgroup) assistWorkgroups.get(key);
+
+        if (workgroup == null) {
+            try {
+                workgroup = new Workgroup(JidCreate.entityBareFrom(workgroupName), assistConnection);
+
+                workgroup.addInvitationListener(new WorkgroupInvitationListener() {
+                    public void invitationReceived(WorkgroupInvitation workgroupInvitation) {
+                        Log.debug("invitationReceived " + workgroupInvitation.getGroupChatName() + " "
+                                + workgroupInvitation.getUniqueID() + " " + workgroupInvitation.getInvitationSender() + " "
+                                + workgroupInvitation.getMetaData() + "\n" + workgroupInvitation.getMessageBody());
+
+                        String room = workgroupInvitation.getGroupChatName().toString().split("@")[0];
+                        String jid = workgroupInvitation.getUniqueID().toString();
+                        String userid = jid.split("@")[0];
+
+                        AssistEntity assist = assits.get(userid);
+
+                        if (assist != null) {
+                            assist.setGroupchat(workgroupInvitation.getGroupChatName().toString());
+                            String url = JiveGlobals.getProperty("ofmeet.root.url.secure",
+                                    "https://" + XMPPServer.getInstance().getServerInfo().getHostname() + ":"
+                                            + JiveGlobals.getProperty("httpbind.port.secure", "7443"))
+                                    + "/meet/" + room;
+                            assist.setUrl(url);
+
+                            try {
+                                MultiUserChat assistRoom = assistConnection.mucManager.getMultiUserChat((EntityBareJid)workgroupInvitation.getGroupChatName());
+                                assist.setChatroom(assistRoom);
+
+                            } catch (Exception e) {
+                                Log.warn("invitationReceived - " + e);
+                            }
+                            assist.setMessage(workgroupInvitation.getMessageBody());
+                            assist.setSender(workgroupInvitation.getInvitationSender().toString());
+
+                            // TODO anonymous SSE
+                            assistConnection.clientServlet.broadcast("chatapi.ask", "{\"type\": \"offer\", \"to\":\"" + jid + "\", \"from\":\""
+                                            + workgroupInvitation.getInvitationSender() + "\", \"url\":\"" + url
+                                            + "\", \"mucRoom\": \"" + workgroupInvitation.getGroupChatName() + "\"}");
+                        }
+                    }
+                });
+
+                assistWorkgroups.put(key, workgroup);
+
+            } catch (Exception e) {
+                Log.error("getWorkgroup", e);
+            }
+        }
+
+        return workgroup;
+    }
+
+    private static boolean isOnline(AssistEntity assistance, OpenfireConnection assistConnection) {
+        String key = assistance.getWorkgroup() + "-" + assistance.getUserID();
+        final String workgroupName = assistance.getWorkgroup() + "@workgroup." + XMPPServer.getInstance().getServerInfo().getXMPPDomain();
+
+        try {
+            Presence presence = workgroupPresence.get(workgroupName);
+
+            if (presence == null) {
+                Workgroup workgroup = getWorkgroup(assistance, assistConnection);
+                boolean isAvailable = workgroup.isAvailable();
+                presence = new Presence(isAvailable ? Presence.Type.available : Presence.Type.unavailable);
+                workgroupPresence.put(workgroupName, presence);
+
+                StanzaFilter presenceFilter = new StanzaTypeFilter(Presence.class);
+                StanzaFilter fromFilter = FromMatchesFilter.create(JidCreate.entityBareFrom(workgroupName));
+                StanzaFilter andFilter = new AndFilter(fromFilter, presenceFilter);
+
+                assistConnection.addPacketListener(new PacketListener() {
+                    public void processStanza(Stanza packet) {
+                        Presence presence = (Presence) packet;
+                        workgroupPresence.put(workgroupName, presence);
+                    }
+                }, andFilter);
+
+                return isAvailable;
+            }
+
+            return presence != null && presence.getType() == Presence.Type.available;
+
+        } catch (Exception e) {
+            Log.error("isOnline", e);
+            return false;
+        }
+    }
+
+
+    // -------------------------------------------------------
+    //
     // Common
     //
     // -------------------------------------------------------
@@ -691,6 +1219,11 @@ public class OpenfireConnection extends AbstractXMPPConnection implements ChatMe
         catch (XmppStringprepException e) {
             throw new IllegalStateException(e);
         }
+    }
+
+    public OpenfireConfiguration getConfig()
+    {
+        return config;
     }
 
     public String getUsername()

@@ -100,6 +100,7 @@ public class JerseyWrapper extends ServletContainer {
         prc.getClasses().add(BookmarkService.class);
         prc.getClasses().add(ChatService.class);
         prc.getClasses().add(MeetService.class);
+        prc.getClasses().add(AskService.class);
 
         prc.getClasses().add(RESTExceptionMapper.class);
     }

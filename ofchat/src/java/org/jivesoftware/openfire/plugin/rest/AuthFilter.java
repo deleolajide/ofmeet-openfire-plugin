@@ -50,11 +50,6 @@ public class AuthFilter implements ContainerRequestFilter {
             return containerRequest;
         }
 
-        // To be backwards compatible to userservice 1.*
-        if ("restapi/v1/userservice".equals(containerRequest.getPath())) {
-            return containerRequest;
-        }
-
         if (!plugin.getAllowedIPs().isEmpty()) {
             // Get client's IP address
             String ipAddress = httpRequest.getHeader("x-forwarded-for");
@@ -71,6 +66,18 @@ public class AuthFilter implements ContainerRequestFilter {
                 LOG.warn("REST API rejected service to IP address: " + ipAddress);
                 throw new WebApplicationException(Status.UNAUTHORIZED);
             }
+        }
+
+        // To be backwards compatible to userservice 1.*
+
+        if ("restapi/v1/userservice".equals(containerRequest.getPath())) {
+            return containerRequest;
+        }
+
+        // Assist does not require authentication
+
+        if (containerRequest.getPath().startsWith("restapi/v1/ask")) {
+            return containerRequest;
         }
 
         // Get the authentification passed in HTTP headers parameters
@@ -93,9 +100,7 @@ public class AuthFilter implements ContainerRequestFilter {
                 throw new WebApplicationException(Status.UNAUTHORIZED);
             }
 
-            if (!containerRequest.getPath().startsWith("restapi/v1/chat") &&
-                !containerRequest.getPath().startsWith("restapi/v1/meet") &&
-                !containerRequest.getPath().startsWith("restapi/v1/ask"))
+            if (containerRequest.getPath().startsWith("restapi/v1/admin"))
             {
                 boolean userAdmin = AdminManager.getInstance().isUserAdmin(usernameAndPassword[0], true);
 
