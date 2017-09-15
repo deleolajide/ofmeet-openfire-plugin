@@ -33,13 +33,12 @@
     </properties>
 
     <modules>
-<!--
+
         <module>web</module>
         <module>config</module>
         <module>ofmeet</module>      
         <module>offocus</module>  
-        <module>ofswitch</module>   
--->        
+        <module>ofswitch</module>         
         <module>ofchat</module>           
     </modules>
 
@@ -98,7 +97,7 @@
             <dependency>
                 <groupId>org.jitsi</groupId>
                 <artifactId>jicofo</artifactId>
-                <version>1.0-20170809.150330-7</version>
+                <version>1.0-20170911.153105-10</version>
             </dependency>
             <dependency>
                 <groupId>org.jitsi</groupId>
