@@ -91,6 +91,8 @@ public class JitsiJicofoWrapper
         final OSGiBundleConfig jicofoConfig = new JicofoBundleConfig();
         OSGi.setBundleConfig(jicofoConfig);
 
+        Thread.sleep(5000 ); // wait for videobridge to fully initialise
+
         jicofoComponent = new FocusComponent( XMPPServer.getInstance().getServerInfo().getHostname(), 0, XMPPServer.getInstance().getServerInfo().getXMPPDomain(), jicofoSubdomain, null, focusAnonymous, XMPPServer.getInstance().createJID( "focus", null ).toBareJID() );
 
         Thread.sleep(2000 ); // Intended to prevent ConcurrentModificationExceptions while starting the component. See https://github.com/igniterealtime/ofmeet-openfire-plugin/issues/4
