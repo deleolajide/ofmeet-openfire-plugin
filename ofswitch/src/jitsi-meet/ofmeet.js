@@ -436,6 +436,8 @@ var ofmeet = (function(of)
     config.dialInConfCodeUrl    = 'https://' + window.location.host + '/meet/conferencemapper.json';
     config.dialOutCodesUrl      = 'https://' + window.location.host + '/meet/countrycodes.json';
     config.dialOutAuthUrl       = 'https://' + window.location.host + '/meet/authorizephone.json';
+    config.peopleSearchUrl      = 'https://' + window.location.host + '/meet/peoplesearch.json';
+    config.inviteServiceUrl     = 'https://' + window.location.host + '/meet/inviteservice.json';
 
     config.p2p = {
         enabled: true,
