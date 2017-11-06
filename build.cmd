@@ -1,4 +1,4 @@
-call "C:\Apache Software Foundation\apache-maven-3.5.0\bin\mvn" clean package
+call mvn clean package
 
 rd "C:\openfire_temp\plugins\ofmeet" /q /s
 rd "C:\openfire_temp\plugins\ofocus" /q /s

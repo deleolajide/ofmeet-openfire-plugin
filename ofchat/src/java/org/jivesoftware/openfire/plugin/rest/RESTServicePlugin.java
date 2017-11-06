@@ -179,7 +179,7 @@ public class RESTServicePlugin implements Plugin, PropertyEventListener {
         initializers3.add(new ContainerInitializer(new JettyJasperInitializer(), null));
         context3.setAttribute("org.eclipse.jetty.containerInitializers", initializers3);
         context3.setAttribute(InstanceManager.class.getName(), new SimpleInstanceManager());
-        context3.setWelcomeFiles(new String[]{"index.jsp"});
+        context3.setWelcomeFiles(new String[]{"index.html"});
         HttpBindManager.getInstance().addJettyHandler(context3);
 
         bookmarkInterceptor = new BookmarkInterceptor();
