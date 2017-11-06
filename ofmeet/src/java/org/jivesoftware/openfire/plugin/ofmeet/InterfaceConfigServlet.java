@@ -54,6 +54,7 @@ public class InterfaceConfigServlet extends HttpServlet
             config.put( "TOOLBAR_TIMEOUT",                       JiveGlobals.getIntProperty(     "org.jitsi.videobridge.ofmeet.toolbar.timeout",               4000                ) );
 
             config.put( "SETTINGS_SECTIONS",                     new JSONArray( JiveGlobals.getListProperty( "org.jitsi.videobridge.ofmeet.settings.sections",    Arrays.asList( "language", "devices", "moderator" ) ) ) );
+            config.put( "INVITE_OPTIONS",                        new JSONArray( JiveGlobals.getListProperty( "org.jitsi.videobridge.ofmeet.invite.options",       Arrays.asList( "invite", "dialout", "addtocall" ) ) ) );
 
             config.put( "CANVAS_EXTRA",                          JiveGlobals.getIntProperty(     "org.jitsi.videobridge.ofmeet.canvas.extra",                  104                 ) );
             config.put( "CANVAS_RADIUS",                         JiveGlobals.getIntProperty(     "org.jitsi.videobridge.ofmeet.canvas.radius",                 0                   ) );
