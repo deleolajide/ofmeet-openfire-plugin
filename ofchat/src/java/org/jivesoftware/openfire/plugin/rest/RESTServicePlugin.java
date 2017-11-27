@@ -170,7 +170,7 @@ public class RESTServicePlugin implements Plugin, PropertyEventListener {
 
         Log.info("Initialize WebService ");
 
-        WebAppContext context3 = new WebAppContext(null, pluginDirectory.getPath() + "/classes", "/ofchat");
+        context3 = new WebAppContext(null, pluginDirectory.getPath() + "/classes", "/ofchat");
         context3.setClassLoader(this.getClass().getClassLoader());
 
         // Ensure the JSP engine is initialized correctly (in order to be able to cope with Tomcat/Jasper precompiled JSPs).
